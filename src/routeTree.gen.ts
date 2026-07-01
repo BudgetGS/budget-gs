@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 import { Route as AuthenticatedUnidadesRouteImport } from './routes/_authenticated/unidades'
+import { Route as AuthenticatedResponsaveisRouteImport } from './routes/_authenticated/responsaveis'
 import { Route as AuthenticatedRelatoriosRouteImport } from './routes/_authenticated/relatorios'
 import { Route as AuthenticatedMinhaContaRouteImport } from './routes/_authenticated/minha-conta'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -44,6 +45,12 @@ const AuthenticatedUnidadesRoute = AuthenticatedUnidadesRouteImport.update({
   path: '/unidades',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedResponsaveisRoute =
+  AuthenticatedResponsaveisRouteImport.update({
+    id: '/responsaveis',
+    path: '/responsaveis',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedRelatoriosRoute = AuthenticatedRelatoriosRouteImport.update({
   id: '/relatorios',
   path: '/relatorios',
@@ -77,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/minha-conta': typeof AuthenticatedMinhaContaRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
+  '/responsaveis': typeof AuthenticatedResponsaveisRoute
   '/unidades': typeof AuthenticatedUnidadesRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/budget/$mes': typeof AuthenticatedBudgetMesRoute
@@ -88,6 +96,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/minha-conta': typeof AuthenticatedMinhaContaRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
+  '/responsaveis': typeof AuthenticatedResponsaveisRoute
   '/unidades': typeof AuthenticatedUnidadesRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/budget/$mes': typeof AuthenticatedBudgetMesRoute
@@ -101,6 +110,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/minha-conta': typeof AuthenticatedMinhaContaRoute
   '/_authenticated/relatorios': typeof AuthenticatedRelatoriosRoute
+  '/_authenticated/responsaveis': typeof AuthenticatedResponsaveisRoute
   '/_authenticated/unidades': typeof AuthenticatedUnidadesRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
   '/_authenticated/budget/$mes': typeof AuthenticatedBudgetMesRoute
@@ -114,6 +124,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/minha-conta'
     | '/relatorios'
+    | '/responsaveis'
     | '/unidades'
     | '/usuarios'
     | '/budget/$mes'
@@ -125,6 +136,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/minha-conta'
     | '/relatorios'
+    | '/responsaveis'
     | '/unidades'
     | '/usuarios'
     | '/budget/$mes'
@@ -137,6 +149,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/minha-conta'
     | '/_authenticated/relatorios'
+    | '/_authenticated/responsaveis'
     | '/_authenticated/unidades'
     | '/_authenticated/usuarios'
     | '/_authenticated/budget/$mes'
@@ -186,6 +199,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUnidadesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/responsaveis': {
+      id: '/_authenticated/responsaveis'
+      path: '/responsaveis'
+      fullPath: '/responsaveis'
+      preLoaderRoute: typeof AuthenticatedResponsaveisRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/relatorios': {
       id: '/_authenticated/relatorios'
       path: '/relatorios'
@@ -228,6 +248,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedMinhaContaRoute: typeof AuthenticatedMinhaContaRoute
   AuthenticatedRelatoriosRoute: typeof AuthenticatedRelatoriosRoute
+  AuthenticatedResponsaveisRoute: typeof AuthenticatedResponsaveisRoute
   AuthenticatedUnidadesRoute: typeof AuthenticatedUnidadesRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
   AuthenticatedBudgetMesRoute: typeof AuthenticatedBudgetMesRoute
@@ -238,6 +259,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedMinhaContaRoute: AuthenticatedMinhaContaRoute,
   AuthenticatedRelatoriosRoute: AuthenticatedRelatoriosRoute,
+  AuthenticatedResponsaveisRoute: AuthenticatedResponsaveisRoute,
   AuthenticatedUnidadesRoute: AuthenticatedUnidadesRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
   AuthenticatedBudgetMesRoute: AuthenticatedBudgetMesRoute,
