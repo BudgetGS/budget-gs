@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedUnidadesRouteImport } from './routes/_authenticated/unidades'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedBudgetIndexRouteImport } from './routes/_authenticated/budget.index'
 import { Route as AuthenticatedBudgetMesRouteImport } from './routes/_authenticated/budget.$mes'
@@ -29,6 +30,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedUnidadesRoute = AuthenticatedUnidadesRouteImport.update({
+  id: '/unidades',
+  path: '/unidades',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/unidades': typeof AuthenticatedUnidadesRoute
   '/budget/$mes': typeof AuthenticatedBudgetMesRoute
   '/budget/': typeof AuthenticatedBudgetIndexRoute
 }
@@ -58,6 +65,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/unidades': typeof AuthenticatedUnidadesRoute
   '/budget/$mes': typeof AuthenticatedBudgetMesRoute
   '/budget': typeof AuthenticatedBudgetIndexRoute
 }
@@ -67,20 +75,28 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/unidades': typeof AuthenticatedUnidadesRoute
   '/_authenticated/budget/$mes': typeof AuthenticatedBudgetMesRoute
   '/_authenticated/budget/': typeof AuthenticatedBudgetIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/dashboard' | '/budget/$mes' | '/budget/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/unidades'
+    | '/budget/$mes'
+    | '/budget/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard' | '/budget/$mes' | '/budget'
+  to: '/' | '/auth' | '/dashboard' | '/unidades' | '/budget/$mes' | '/budget'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/dashboard'
+    | '/_authenticated/unidades'
     | '/_authenticated/budget/$mes'
     | '/_authenticated/budget/'
   fileRoutesById: FileRoutesById
@@ -114,6 +130,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/unidades': {
+      id: '/_authenticated/unidades'
+      path: '/unidades'
+      fullPath: '/unidades'
+      preLoaderRoute: typeof AuthenticatedUnidadesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -140,12 +163,14 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedUnidadesRoute: typeof AuthenticatedUnidadesRoute
   AuthenticatedBudgetMesRoute: typeof AuthenticatedBudgetMesRoute
   AuthenticatedBudgetIndexRoute: typeof AuthenticatedBudgetIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedUnidadesRoute: AuthenticatedUnidadesRoute,
   AuthenticatedBudgetMesRoute: AuthenticatedBudgetMesRoute,
   AuthenticatedBudgetIndexRoute: AuthenticatedBudgetIndexRoute,
 }
