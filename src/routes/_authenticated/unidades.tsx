@@ -45,7 +45,7 @@ function UnidadesPage() {
   const load = async () => {
     const [{ data: u }, { data: s }] = await Promise.all([
       supabase.from("unidades").select("id, nome, ativo, budget_base, supervisor_id").order("nome"),
-      supabase.from("profiles").select("id, nome, user_roles!inner(role)").eq("user_roles.role", "supervisor"),
+supabase.from("profiles").select("id, nome, user_roles!inner(role)").in("user_roles.role", ["admin", "gerente", "supervisor"]),
     ]);
     setUnidades((u as any) ?? []);
     setSups((s as any) ?? []);
