@@ -41,7 +41,7 @@ function Relatorios() {
       setRows((data as any) ?? []);
       if (!isSup && sups.length === 0) {
         const { data: s } = await supabase.from("profiles")
-          .select("id, nome, user_roles!inner(role)").eq("user_roles.role", "supervisor");
+.select("id, nome, user_roles!inner(role)").in("user_roles.role", ["admin", "gerente", "supervisor"]);
         setSups((s as any) ?? []);
       }
     })();
