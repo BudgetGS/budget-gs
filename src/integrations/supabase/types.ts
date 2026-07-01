@@ -14,16 +14,158 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      budgets_mensais: {
+        Row: {
+          atualizado_em: string
+          atualizado_por: string | null
+          budget: number
+          created_at: string
+          gasto: number
+          id: string
+          mes: string
+          unidade_id: string
+        }
+        Insert: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          budget?: number
+          created_at?: string
+          gasto?: number
+          id?: string
+          mes: string
+          unidade_id: string
+        }
+        Update: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          budget?: number
+          created_at?: string
+          gasto?: number
+          id?: string
+          mes?: string
+          unidade_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budgets_mensais_atualizado_por_fkey"
+            columns: ["atualizado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budgets_mensais_unidade_id_fkey"
+            columns: ["unidade_id"]
+            isOneToOne: false
+            referencedRelation: "unidades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      unidades: {
+        Row: {
+          ativo: boolean
+          budget_base: number
+          created_at: string
+          id: string
+          nome: string
+          supervisor_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          budget_base?: number
+          created_at?: string
+          id?: string
+          nome: string
+          supervisor_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          budget_base?: number
+          created_at?: string
+          id?: string
+          nome?: string
+          supervisor_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unidades_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      current_user_role: {
+        Args: never
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      gerar_proximo_mes: { Args: { _mes: string }; Returns: number }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin_or_gerente: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "gerente" | "supervisor"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +292,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "gerente", "supervisor"],
+    },
   },
 } as const
