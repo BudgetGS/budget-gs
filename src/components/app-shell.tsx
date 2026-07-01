@@ -11,6 +11,7 @@ import {
   Menu,
   X,
   UserCircle,
+  UserCog,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,7 @@ const NAV: NavItem[] = [
   { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
   { to: "/unidades", label: "Unidades", icon: Building2, roles: ["admin", "gerente"] },
   { to: "/usuarios", label: "Usuários", icon: Users, roles: ["admin"] },
+  { to: "/responsaveis", label: "Responsáveis", icon: UserCog, roles: ["admin"] },
   { to: "/minha-conta", label: "Minha Conta", icon: UserCircle },
 ];
 
