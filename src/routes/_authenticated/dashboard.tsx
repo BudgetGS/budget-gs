@@ -40,8 +40,8 @@ function Dashboard() {
       setRows((data as any) ?? []);
       if (!isSup) {
         const { data: sups } = await supabase
-          .from("profiles")
-          .select("id, nome, user_roles!inner(role)")
+      .select("id, nome, user_roles!inner(role)")
+.in("user_roles.role", ["admin", "gerente", "supervisor"]);
           .eq("user_roles.role", "supervisor");
         setSupervisores((sups as any) ?? []);
       }
