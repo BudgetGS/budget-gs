@@ -53,7 +53,7 @@ function BudgetMes() {
     setRows(sorted);
     if (!isSup && supervisores.length === 0) {
       const { data: sups } = await supabase
-        .from("profiles").select("id, nome, user_roles!inner(role)").eq("user_roles.role", "supervisor");
+.from("profiles").select("id, nome, user_roles!inner(role)").in("user_roles.role", ["admin", "gerente", "supervisor"]);
       setSupervisores((sups as any) ?? []);
     }
     setLoading(false);
