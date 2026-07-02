@@ -131,7 +131,7 @@ function BudgetMes() {
     }
   };
 
-  const registrarLancamento = async (row: Budget, valor: number, descricao: string) => {
+  const registrarLancamento = async (row: Budget, valor: number, descricao: string): Promise<void> => {
     if (!user?.id) return;
     if (!Number.isFinite(valor) || valor <= 0) {
       toast.error("Informe um valor válido");
@@ -145,7 +145,10 @@ function BudgetMes() {
       data_gasto: new Date().toISOString().slice(0, 10),
       lancado_por: user.id,
     });
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("Lançamento registrado");
     await load();
   };
