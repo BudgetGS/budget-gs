@@ -3,9 +3,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { brl, currentMonthKey, fmtPct, monthFirstDay, monthLabel, pct } from "@/lib/format";
-import { AlertTriangle, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { addMonths, brl, currentMonthKey, fmtPct, monthFirstDay, monthLabel, pct } from "@/lib/format";
+import { AlertTriangle, ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { fetchSupervisores, type Supervisor } from "@/lib/supervisores";
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell,
 } from "recharts";
@@ -22,11 +24,11 @@ type Row = {
 };
 
 function Dashboard() {
-  const { role, user } = useAuth();
+  const { role } = useAuth();
   const isSup = role === "supervisor";
-  const mesKey = currentMonthKey();
+  const [mesKey, setMesKey] = useState<string>(currentMonthKey());
   const [rows, setRows] = useState<Row[]>([]);
-  const [supervisores, setSupervisores] = useState<{ id: string; nome: string }[]>([]);
+  const [supervisores, setSupervisores] = useState<Supervisor[]>([]);
   const [filterSup, setFilterSup] = useState<string>("all");
   const [loading, setLoading] = useState(true);
 
@@ -39,15 +41,21 @@ function Dashboard() {
         .eq("mes", monthFirstDay(mesKey));
       setRows((data as any) ?? []);
       if (!isSup) {
-        const { data: sups } = await supabase
-          .from("profiles")
-          .select("id, nome, user_roles!inner(role)")
-          .in("user_roles.role", ["admin", "gerente", "supervisor"]);
-        setSupervisores((sups as any) ?? []);
+        setSupervisores(await fetchSupervisores());
       }
       setLoading(false);
     })();
   }, [mesKey, isSup]);
+
+  const gerarMeses = useMemo(() => {
+    const arr: string[] = [];
+    const now = new Date();
+    for (let i = -18; i <= 6; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      arr.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    }
+    return arr.reverse();
+  }, []);
 
   const filtered = useMemo(() => {
     if (filterSup === "all") return rows;
@@ -71,26 +79,42 @@ function Dashboard() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] sm:flex sm:items-end sm:justify-between gap-4">
+      <div className="grid grid-cols-1 sm:flex sm:items-end sm:justify-between gap-4">
         <div className="min-w-0">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight capitalize">
             {monthLabel(monthFirstDay(mesKey))}
           </h1>
-          <p className="text-sm text-muted-foreground">Visão geral do mês corrente</p>
+          <p className="text-sm text-muted-foreground">Visão geral do mês selecionado</p>
         </div>
-        {!isSup && (
-          <Select value={filterSup} onValueChange={setFilterSup}>
-            <SelectTrigger className="rounded-xl w-[220px]">
-              <SelectValue placeholder="Responsável" />
-            </SelectTrigger>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="icon" className="rounded-xl" onClick={() => setMesKey(addMonths(mesKey, -1))}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Select value={mesKey} onValueChange={setMesKey}>
+            <SelectTrigger className="rounded-xl w-[170px]"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos responsáveis</SelectItem>
-              {supervisores.map((s) => (
-                <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+              {gerarMeses.map((m) => (
+                <SelectItem key={m} value={m} className="capitalize">{monthLabel(monthFirstDay(m))}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-        )}
+          <Button variant="outline" size="icon" className="rounded-xl" onClick={() => setMesKey(addMonths(mesKey, 1))}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          {!isSup && (
+            <Select value={filterSup} onValueChange={setFilterSup}>
+              <SelectTrigger className="rounded-xl w-[200px]">
+                <SelectValue placeholder="Responsável" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos responsáveis</SelectItem>
+                {supervisores.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
