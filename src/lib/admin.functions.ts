@@ -4,6 +4,29 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const roleEnum = z.enum(["admin", "gerente", "supervisor"]);
 
+async function assertAdmin(userId: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("role", "admin")
+    .maybeSingle();
+  if (!data) throw new Error("Apenas admin");
+  return supabaseAdmin;
+}
+
+async function assertAdminOrGerente(userId: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .in("role", ["admin", "gerente"]);
+  if (!data || data.length === 0) throw new Error("Sem permissão");
+  return supabaseAdmin;
+}
+
 export const createUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
@@ -15,13 +38,7 @@ export const createUser = createServerFn({ method: "POST" })
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { data: isAdmin } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
-    if (!isAdmin) throw new Error("Apenas admin pode criar usuários");
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await assertAdmin(context.userId);
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
       email: data.email,
       password: data.password,
@@ -43,12 +60,7 @@ export const updateUserRole = createServerFn({ method: "POST" })
     z.object({ user_id: z.string().uuid(), role: roleEnum }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { data: isAdmin } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
-    if (!isAdmin) throw new Error("Apenas admin");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await assertAdmin(context.userId);
     await supabaseAdmin.from("user_roles").delete().eq("user_id", data.user_id);
     await supabaseAdmin.from("user_roles").insert({ user_id: data.user_id, role: data.role });
     return { ok: true };
@@ -58,13 +70,8 @@ export const deleteUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ user_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { data: isAdmin } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
-    if (!isAdmin) throw new Error("Apenas admin");
     if (data.user_id === context.userId) throw new Error("Não é possível excluir a si mesmo");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await assertAdmin(context.userId);
     const { error } = await supabaseAdmin.auth.admin.deleteUser(data.user_id);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -80,13 +87,7 @@ export const inviteUser = createServerFn({ method: "POST" })
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { data: isAdmin } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
-    if (!isAdmin) throw new Error("Apenas admin pode convidar responsáveis");
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await assertAdmin(context.userId);
     const { data: invited, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(
       data.email,
       { data: { nome: data.nome, role: data.role } },
@@ -106,13 +107,8 @@ export const setUserActive = createServerFn({ method: "POST" })
     z.object({ user_id: z.string().uuid(), ativo: z.boolean() }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { data: isAdmin } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
-    if (!isAdmin) throw new Error("Apenas admin");
     if (data.user_id === context.userId) throw new Error("Não é possível desativar a si mesmo");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await assertAdmin(context.userId);
     const { error } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, {
       ban_duration: data.ativo ? "none" : "876000h",
     });
@@ -123,12 +119,7 @@ export const setUserActive = createServerFn({ method: "POST" })
 export const listResponsaveis = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data: isAdmin } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
-    if (!isAdmin) throw new Error("Apenas admin");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await assertAdmin(context.userId);
 
     const [{ data: authList, error: authErr }, { data: profiles }, { data: roles }] =
       await Promise.all([
@@ -165,4 +156,14 @@ export const listResponsaveis = createServerFn({ method: "GET" })
         last_sign_in_at: a?.last_sign_in_at ?? null,
       };
     });
+  });
+
+export const gerarProximoMes = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ mes: z.string() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const supabaseAdmin = await assertAdminOrGerente(context.userId);
+    const { data: count, error } = await supabaseAdmin.rpc("gerar_proximo_mes", { _mes: data.mes });
+    if (error) throw new Error(error.message);
+    return { count: count ?? 0 };
   });
