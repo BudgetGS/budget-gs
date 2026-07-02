@@ -83,9 +83,13 @@ supabase.from("profiles").select("id, nome, user_roles!inner(role)").in("user_ro
     const [y, m] = key.split("-").map(Number);
     const nextKey = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
     if (!confirm(`Gerar budgets do próximo mês (${nextKey}) para todas as unidades ativas?`)) return;
-    const { data, error } = await supabase.rpc("gerar_proximo_mes", { _mes: monthFirstDay(nextKey) });
-    if (error) return toast.error(error.message);
-    toast.success(`Mês gerado: ${data} unidade(s).`);
+    try {
+      const { gerarProximoMes: gerarFn } = await import("@/lib/admin.functions");
+      const res = await gerarFn({ data: { mes: monthFirstDay(nextKey) } });
+      toast.success(`Mês gerado: ${res.count} unidade(s).`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao gerar mês");
+    }
   };
 
   return (
