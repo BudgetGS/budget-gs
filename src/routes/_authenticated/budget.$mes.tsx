@@ -6,11 +6,12 @@ import { addMonths, brl, fmtPct, monthFirstDay, monthLabel, pct, saldoBadgeBg } 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Loader2, Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { fetchSupervisores, type Supervisor } from "@/lib/supervisores";
 
 export const Route = createFileRoute("/_authenticated/budget/$mes")({
   component: BudgetMes,
@@ -22,7 +23,7 @@ type Budget = {
   mes: string;
   budget: number;
   gasto: number;
-  unidades: { id: string; nome: string; supervisor_id: string | null };
+  unidades: { id: string; nome: string; supervisor_id: string | null; budget_base: number };
 };
 
 function BudgetMes() {
@@ -33,18 +34,20 @@ function BudgetMes() {
   const navigate = useNavigate();
 
   const [rows, setRows] = useState<Budget[]>([]);
-  const [supervisores, setSupervisores] = useState<{ id: string; nome: string }[]>([]);
+  const [supervisores, setSupervisores] = useState<Supervisor[]>([]);
   const [filterSup, setFilterSup] = useState<string>("all");
   const [loading, setLoading] = useState(true);
-  const [savingId, setSavingId] = useState<string | null>(null);
   const [compareMeses, setCompareMeses] = useState<string[]>([]);
   const [compareData, setCompareData] = useState<Record<string, Budget[]>>({});
+  const [bulkEdit, setBulkEdit] = useState(false);
+  const [bulkValues, setBulkValues] = useState<Record<string, string>>({});
+  const [savingBulk, setSavingBulk] = useState(false);
 
   const load = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("budgets_mensais")
-      .select("id, unidade_id, mes, budget, gasto, unidades!inner(id, nome, supervisor_id)")
+      .select("id, unidade_id, mes, budget, gasto, unidades!inner(id, nome, supervisor_id, budget_base)")
       .eq("mes", monthFirstDay(mes));
     if (error) toast.error(error.message);
     const sorted = ((data as any) ?? []).sort((a: Budget, b: Budget) =>
@@ -52,9 +55,7 @@ function BudgetMes() {
     );
     setRows(sorted);
     if (!isSup && supervisores.length === 0) {
-      const { data: sups } = await supabase
-.from("profiles").select("id, nome, user_roles!inner(role)").in("user_roles.role", ["admin", "gerente", "supervisor"]);
-      setSupervisores((sups as any) ?? []);
+      setSupervisores(await fetchSupervisores());
     }
     setLoading(false);
   };
@@ -67,7 +68,7 @@ function BudgetMes() {
       for (const m of compareMeses) {
         const { data } = await supabase
           .from("budgets_mensais")
-          .select("id, unidade_id, mes, budget, gasto, unidades!inner(id, nome, supervisor_id)")
+          .select("id, unidade_id, mes, budget, gasto, unidades!inner(id, nome, supervisor_id, budget_base)")
           .eq("mes", monthFirstDay(m));
         out[m] = (data as any) ?? [];
       }
@@ -86,14 +87,67 @@ function BudgetMes() {
     return { budget, gasto, saldo: budget - gasto, pct: pct(gasto, budget) };
   }, [filtered]);
 
-  const updateField = async (id: string, field: "budget" | "gasto", value: number) => {
-    setSavingId(id);
-    const payload: any = { [field]: value, atualizado_em: new Date().toISOString(), atualizado_por: user?.id };
-    const { error } = await supabase.from("budgets_mensais").update(payload).eq("id", id);
-    setSavingId(null);
+  const startBulkEdit = () => {
+    const init: Record<string, string> = {};
+    filtered.forEach((r) => { init[r.id] = String(Number(r.unidades.budget_base)); });
+    setBulkValues(init);
+    setBulkEdit(true);
+  };
+
+  const saveBulkEdit = async () => {
+    setSavingBulk(true);
+    try {
+      const changes = filtered
+        .map((r) => {
+          const newBase = parseFloat(bulkValues[r.id] ?? String(r.unidades.budget_base));
+          if (Number.isNaN(newBase) || newBase === Number(r.unidades.budget_base)) return null;
+          const oldBase = Number(r.unidades.budget_base);
+          const saldoAcumulado = Number(r.budget) - oldBase;
+          const newBudget = newBase + saldoAcumulado;
+          return { row: r, newBase, newBudget };
+        })
+        .filter((x): x is NonNullable<typeof x> => x !== null);
+
+      for (const c of changes) {
+        const { error: e1 } = await supabase
+          .from("unidades")
+          .update({ budget_base: c.newBase })
+          .eq("id", c.row.unidade_id);
+        if (e1) throw new Error(e1.message);
+        const { error: e2 } = await supabase
+          .from("budgets_mensais")
+          .update({ budget: c.newBudget, atualizado_em: new Date().toISOString(), atualizado_por: user?.id })
+          .eq("id", c.row.id);
+        if (e2) throw new Error(e2.message);
+      }
+      toast.success(changes.length === 0 ? "Nenhuma alteração" : `${changes.length} unidade(s) atualizada(s)`);
+      setBulkEdit(false);
+      setBulkValues({});
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao salvar");
+    } finally {
+      setSavingBulk(false);
+    }
+  };
+
+  const registrarLancamento = async (row: Budget, valor: number, descricao: string) => {
+    if (!user?.id) return;
+    if (!Number.isFinite(valor) || valor <= 0) {
+      toast.error("Informe um valor válido");
+      return;
+    }
+    const { error } = await supabase.from("lancamentos").insert({
+      unidade_id: row.unidade_id,
+      budget_mensal_id: row.id,
+      valor,
+      descricao: descricao || null,
+      data_gasto: new Date().toISOString().slice(0, 10),
+      lancado_por: user.id,
+    });
     if (error) return toast.error(error.message);
-    setRows((r) => r.map((x) => (x.id === id ? { ...x, [field]: value } : x)));
-    toast.success("Atualizado");
+    toast.success("Lançamento registrado");
+    await load();
   };
 
   const gerarMeses = useMemo(() => {
@@ -185,7 +239,23 @@ function BudgetMes() {
             <thead className="bg-muted/60">
               <tr className="text-left">
                 <th className="px-4 py-3 font-semibold">Unidade</th>
-                <th className="px-4 py-3 font-semibold text-right">Budget</th>
+                <th className="px-4 py-3 font-semibold text-right">
+                  <div className="inline-flex items-center gap-2">
+                    Budget fixo
+                    {canEditBudget && (
+                      bulkEdit ? (
+                        <Button size="sm" variant="secondary" className="rounded-lg h-7" onClick={saveBulkEdit} disabled={savingBulk}>
+                          {savingBulk ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Check className="h-3 w-3" /> Concluir</>}
+                        </Button>
+                      ) : (
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={startBulkEdit} title="Editar em massa">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      )
+                    )}
+                  </div>
+                </th>
+                <th className="px-4 py-3 font-semibold text-right">Budget mês</th>
                 <th className="px-4 py-3 font-semibold text-right">Gasto</th>
                 <th className="px-4 py-3 font-semibold text-right">Saldo</th>
                 <th className="px-4 py-3 font-semibold text-right">%</th>
@@ -193,9 +263,9 @@ function BudgetMes() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={5} className="text-center py-10"><Loader2 className="h-5 w-5 animate-spin inline" /></td></tr>
+                <tr><td colSpan={6} className="text-center py-10"><Loader2 className="h-5 w-5 animate-spin inline" /></td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={5} className="text-center py-10 text-muted-foreground">Nenhum registro. Gere o mês em Unidades.</td></tr>
+                <tr><td colSpan={6} className="text-center py-10 text-muted-foreground">Nenhum registro. Gere o mês em Unidades.</td></tr>
               ) : filtered.map((r) => {
                 const saldo = Number(r.budget) - Number(r.gasto);
                 const p = pct(Number(r.gasto), Number(r.budget));
@@ -203,14 +273,24 @@ function BudgetMes() {
                   <tr key={r.id} className="border-t border-border/60">
                     <td className="px-4 py-3 font-medium">{r.unidades.nome}</td>
                     <td className="px-4 py-3 text-right">
-                      {canEditBudget ? (
-                        <InlineNumber value={Number(r.budget)} onSave={(v) => updateField(r.id, "budget", v)} busy={savingId === r.id} />
+                      {bulkEdit && canEditBudget ? (
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={bulkValues[r.id] ?? String(Number(r.unidades.budget_base))}
+                          onChange={(e) => setBulkValues((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                          className="w-32 text-right rounded-lg ml-auto"
+                        />
                       ) : (
-                        brl(r.budget)
+                        brl(r.unidades.budget_base)
                       )}
                     </td>
+                    <td className="px-4 py-3 text-right">{brl(r.budget)}</td>
                     <td className="px-4 py-3 text-right">
-                      <InlineNumber value={Number(r.gasto)} onSave={(v) => updateField(r.id, "gasto", v)} busy={savingId === r.id} />
+                      <div className="inline-flex items-center gap-2 justify-end">
+                        <span>{brl(r.gasto)}</span>
+                        <LancarPopover onSave={(v, d) => registrarLancamento(r, v, d)} />
+                      </div>
                     </td>
                     <td className={`px-4 py-3 text-right font-semibold ${saldo < 0 ? "text-destructive" : ""}`}>{brl(saldo)}</td>
                     <td className="px-4 py-3 text-right">
@@ -296,21 +376,63 @@ function Totalizer({ label, value, tone }: { label: string; value: string; tone?
   );
 }
 
-function InlineNumber({ value, onSave, busy }: { value: number; onSave: (v: number) => void; busy: boolean }) {
-  const [v, setV] = useState(String(value));
-  useEffect(() => setV(String(value)), [value]);
+function LancarPopover({ onSave }: { onSave: (valor: number, descricao: string) => Promise<void> | void }) {
+  const [open, setOpen] = useState(false);
+  const [valor, setValor] = useState("");
+  const [descricao, setDescricao] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    const n = parseFloat(valor);
+    if (Number.isNaN(n) || n <= 0) return;
+    setBusy(true);
+    await onSave(n, descricao);
+    setBusy(false);
+    setValor("");
+    setDescricao("");
+    setOpen(false);
+  };
+
   return (
-    <Input
-      type="number"
-      step="0.01"
-      value={v}
-      disabled={busy}
-      onChange={(e) => setV(e.target.value)}
-      onBlur={() => {
-        const n = parseFloat(v);
-        if (!Number.isNaN(n) && n !== value) onSave(n);
-      }}
-      className="w-32 text-right rounded-lg ml-auto"
-    />
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label="Lançar gasto"
+          className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-primary text-primary-foreground shadow hover:opacity-90 active:scale-95 transition"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-64 space-y-3">
+        <div className="space-y-1">
+          <label className="text-xs font-semibold text-muted-foreground">Valor (R$)</label>
+          <Input
+            autoFocus
+            type="number"
+            step="0.01"
+            inputMode="decimal"
+            value={valor}
+            onChange={(e) => setValor(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
+            placeholder="0,00"
+            className="text-right rounded-lg"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-semibold text-muted-foreground">Descrição (opcional)</label>
+          <Input
+            value={descricao}
+            onChange={(e) => setDescricao(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
+            placeholder="Ex: material elétrico"
+            className="rounded-lg"
+          />
+        </div>
+        <Button size="sm" className="w-full rounded-lg" onClick={submit} disabled={busy}>
+          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : "Salvar"}
+        </Button>
+      </PopoverContent>
+    </Popover>
   );
 }
