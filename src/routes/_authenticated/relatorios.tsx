@@ -5,9 +5,14 @@ import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { fetchSupervisores, type Supervisor } from "@/lib/supervisores";
 import { brl, fmtPct, monthLabel, pct, saldoBadgeBg } from "@/lib/format";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from "recharts";
-import { Download } from "lucide-react";
+import { Download, Building2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/relatorios")({
   component: Relatorios,
@@ -18,7 +23,7 @@ type Row = {
   gasto: number;
   mes: string;
   unidade_id: string;
-  unidades: { nome: string; supervisor_id: string | null };
+  unidades: { nome: string; supervisor_id: string | null; budget_base: number };
 };
 
 function Relatorios() {
@@ -27,8 +32,11 @@ function Relatorios() {
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
   const [rows, setRows] = useState<Row[]>([]);
-  const [sups, setSups] = useState<{ id: string; nome: string }[]>([]);
+  const [sups, setSups] = useState<Supervisor[]>([]);
   const [filterSup, setFilterSup] = useState<string>("all");
+  const [considerarAcumulado, setConsiderarAcumulado] = useState(true);
+  const [unidadeIds, setUnidadeIds] = useState<string[]>([]);
+  const [allUnidades, setAllUnidades] = useState<{ id: string; nome: string }[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -36,20 +44,27 @@ function Relatorios() {
       const to = `${year}-12-01`;
       const { data } = await supabase
         .from("budgets_mensais")
-        .select("mes, budget, gasto, unidade_id, unidades!inner(nome, supervisor_id)")
+        .select("mes, budget, gasto, unidade_id, unidades!inner(nome, supervisor_id, budget_base)")
         .gte("mes", from).lte("mes", to);
       setRows((data as any) ?? []);
       if (!isSup && sups.length === 0) {
-        const { data: s } = await supabase.from("profiles")
-.select("id, nome, user_roles!inner(role)").in("user_roles.role", ["admin", "gerente", "supervisor"]);
-        setSups((s as any) ?? []);
+        setSups(await fetchSupervisores());
+      }
+      if (allUnidades.length === 0) {
+        const { data: uds } = await supabase.from("unidades").select("id, nome").order("nome");
+        setAllUnidades((uds as any) ?? []);
       }
     })();
-  }, [year, isSup]);
+  }, [year, isSup]); // eslint-disable-line
 
   const filtered = useMemo(
-    () => (filterSup === "all" ? rows : rows.filter((r) => r.unidades.supervisor_id === filterSup)),
-    [rows, filterSup],
+    () => {
+      let out = rows;
+      if (filterSup !== "all") out = out.filter((r) => r.unidades.supervisor_id === filterSup);
+      if (unidadeIds.length > 0) out = out.filter((r) => unidadeIds.includes(r.unidade_id));
+      return out;
+    },
+    [rows, filterSup, unidadeIds],
   );
 
   const monthly = useMemo(() => {
@@ -61,29 +76,56 @@ function Relatorios() {
     filtered.forEach((r) => {
       const k = r.mes.slice(0, 10);
       const cur = map.get(k);
-      if (cur) { cur.budget += Number(r.budget); cur.gasto += Number(r.gasto); }
+      if (cur) {
+        cur.budget += considerarAcumulado ? Number(r.budget) : Number(r.unidades.budget_base);
+        cur.gasto += Number(r.gasto);
+      }
     });
     return Array.from(map.values()).map((x) => ({ ...x, label: monthLabel(x.mes).slice(0, 3) }));
-  }, [filtered, year]);
+  }, [filtered, year, considerarAcumulado]);
 
   const byUnidade = useMemo(() => {
-    const map = new Map<string, { nome: string; budget: number; gasto: number }>();
+    type Agg = {
+      nome: string;
+      budgetFixoAcum: number;   // budget_base × meses
+      budgetTotalAcum: number;  // soma budgets_mensais.budget
+      gasto: number;
+    };
+    const map = new Map<string, Agg>();
     filtered.forEach((r) => {
-      const cur = map.get(r.unidade_id) ?? { nome: r.unidades.nome, budget: 0, gasto: 0 };
-      cur.budget += Number(r.budget); cur.gasto += Number(r.gasto);
+      const base = Number(r.unidades.budget_base);
+      const cur = map.get(r.unidade_id) ?? { nome: r.unidades.nome, budgetFixoAcum: 0, budgetTotalAcum: 0, gasto: 0 };
+      cur.budgetFixoAcum += base;
+      cur.budgetTotalAcum += Number(r.budget);
+      cur.gasto += Number(r.gasto);
       map.set(r.unidade_id, cur);
     });
-    return Array.from(map.values()).map((x) => ({
-      ...x, saldo: x.budget - x.gasto, pctVal: pct(x.gasto, x.budget),
-    })).sort((a, b) => (b.pctVal ?? 0) - (a.pctVal ?? 0));
-  }, [filtered]);
+    return Array.from(map.values()).map((x) => {
+      const acumulado = x.budgetTotalAcum - x.budgetFixoAcum;
+      const budget = considerarAcumulado ? x.budgetTotalAcum : x.budgetFixoAcum;
+      const saldo = budget - x.gasto;
+      return {
+        nome: x.nome,
+        budgetFixo: x.budgetFixoAcum,
+        acumulado,
+        budget,
+        gasto: x.gasto,
+        saldo,
+        pctVal: pct(x.gasto, budget),
+      };
+    }).sort((a, b) => (b.pctVal ?? 0) - (a.pctVal ?? 0));
+  }, [filtered, considerarAcumulado]);
 
   const estouros = byUnidade.filter((u) => (u.pctVal ?? 0) > 1);
 
   const exportCsv = () => {
-    const header = ["Unidade", "Budget acum.", "Gasto acum.", "Saldo", "% acum."].join(",");
+    const header = considerarAcumulado
+      ? ["Unidade", "Budget fixo", "Saldo acumulado", "Budget total", "Gasto", "Saldo", "%"].join(",")
+      : ["Unidade", "Budget", "Gasto", "Saldo", "%"].join(",");
     const lines = byUnidade.map((u) =>
-      [u.nome, u.budget.toFixed(2), u.gasto.toFixed(2), u.saldo.toFixed(2), (u.pctVal ?? 0).toFixed(4)].join(","),
+      considerarAcumulado
+        ? [u.nome, u.budgetFixo.toFixed(2), u.acumulado.toFixed(2), u.budget.toFixed(2), u.gasto.toFixed(2), u.saldo.toFixed(2), (u.pctVal ?? 0).toFixed(4)].join(",")
+        : [u.nome, u.budget.toFixed(2), u.gasto.toFixed(2), u.saldo.toFixed(2), (u.pctVal ?? 0).toFixed(4)].join(","),
     );
     const blob = new Blob([[header, ...lines].join("\n")], { type: "text/csv;charset=utf-8;" });
     const a = document.createElement("a");
@@ -106,7 +148,7 @@ function Relatorios() {
         </Button>
       </div>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
           <SelectTrigger className="rounded-xl w-[140px]"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -122,6 +164,35 @@ function Relatorios() {
             </SelectContent>
           </Select>
         )}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="rounded-xl">
+              <Building2 className="h-4 w-4" /> Unidades {unidadeIds.length > 0 && `(${unidadeIds.length})`}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 max-h-80 overflow-auto">
+            <div className="space-y-2">
+              {allUnidades.map((u) => (
+                <label key={u.id} className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={unidadeIds.includes(u.id)}
+                    onCheckedChange={(v) =>
+                      setUnidadeIds((prev) => (v ? [...prev, u.id] : prev.filter((x) => x !== u.id)))
+                    }
+                  />
+                  {u.nome}
+                </label>
+              ))}
+              {unidadeIds.length > 0 && (
+                <Button size="sm" variant="ghost" className="w-full" onClick={() => setUnidadeIds([])}>Limpar</Button>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+        <div className="flex items-center gap-2 ml-auto rounded-xl border px-3 py-2">
+          <Switch id="acumulado" checked={considerarAcumulado} onCheckedChange={setConsiderarAcumulado} />
+          <Label htmlFor="acumulado" className="text-sm cursor-pointer">Considerar acumulado</Label>
+        </div>
       </div>
 
       <Card className="rounded-2xl">
@@ -134,7 +205,7 @@ function Relatorios() {
                 <YAxis fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                 <Tooltip formatter={(v: number) => brl(v)} contentStyle={{ borderRadius: 12 }} />
                 <Legend />
-                <Bar dataKey="budget" name="Budget" fill="var(--color-secondary)" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="budget" name={considerarAcumulado ? "Budget total" : "Budget fixo"} fill="var(--color-secondary)" radius={[6, 6, 0, 0]} />
                 <Bar dataKey="gasto" name="Gasto" fill="var(--color-primary)" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -144,14 +215,23 @@ function Relatorios() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="rounded-2xl overflow-hidden">
-          <CardHeader><CardTitle>Acumulado por unidade</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{considerarAcumulado ? "Acumulado por unidade" : "Por unidade (sem rollover)"}</CardTitle></CardHeader>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted/60">
                 <tr className="text-left">
                   <th className="px-4 py-3 font-semibold">Unidade</th>
-                  <th className="px-4 py-3 font-semibold text-right">Budget</th>
+                  {considerarAcumulado ? (
+                    <>
+                      <th className="px-4 py-3 font-semibold text-right">Budget fixo</th>
+                      <th className="px-4 py-3 font-semibold text-right">Saldo acum.</th>
+                      <th className="px-4 py-3 font-semibold text-right">Total</th>
+                    </>
+                  ) : (
+                    <th className="px-4 py-3 font-semibold text-right">Budget</th>
+                  )}
                   <th className="px-4 py-3 font-semibold text-right">Gasto</th>
+                  <th className="px-4 py-3 font-semibold text-right">Saldo</th>
                   <th className="px-4 py-3 font-semibold text-right">%</th>
                 </tr>
               </thead>
@@ -159,15 +239,24 @@ function Relatorios() {
                 {byUnidade.map((u) => (
                   <tr key={u.nome} className="border-t border-border/60">
                     <td className="px-4 py-2 font-medium">{u.nome}</td>
-                    <td className="px-4 py-2 text-right">{brl(u.budget)}</td>
+                    {considerarAcumulado ? (
+                      <>
+                        <td className="px-4 py-2 text-right">{brl(u.budgetFixo)}</td>
+                        <td className={`px-4 py-2 text-right ${u.acumulado < 0 ? "text-destructive" : ""}`}>{brl(u.acumulado)}</td>
+                        <td className="px-4 py-2 text-right font-semibold">{brl(u.budget)}</td>
+                      </>
+                    ) : (
+                      <td className="px-4 py-2 text-right">{brl(u.budget)}</td>
+                    )}
                     <td className="px-4 py-2 text-right">{brl(u.gasto)}</td>
+                    <td className={`px-4 py-2 text-right ${u.saldo < 0 ? "text-destructive" : ""}`}>{brl(u.saldo)}</td>
                     <td className="px-4 py-2 text-right">
                       <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${saldoBadgeBg(u.pctVal)}`}>{fmtPct(u.pctVal)}</span>
                     </td>
                   </tr>
                 ))}
                 {byUnidade.length === 0 && (
-                  <tr><td colSpan={4} className="text-center py-8 text-muted-foreground">Sem dados no período.</td></tr>
+                  <tr><td colSpan={considerarAcumulado ? 7 : 5} className="text-center py-8 text-muted-foreground">Sem dados no período.</td></tr>
                 )}
               </tbody>
             </table>
