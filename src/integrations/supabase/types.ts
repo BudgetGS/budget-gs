@@ -62,6 +62,68 @@ export type Database = {
           },
         ]
       }
+      lancamentos: {
+        Row: {
+          budget_mensal_id: string | null
+          created_at: string | null
+          data_gasto: string
+          descricao: string | null
+          id: string
+          lancado_por: string | null
+          unidade_id: string | null
+          valor: number
+        }
+        Insert: {
+          budget_mensal_id?: string | null
+          created_at?: string | null
+          data_gasto?: string
+          descricao?: string | null
+          id?: string
+          lancado_por?: string | null
+          unidade_id?: string | null
+          valor: number
+        }
+        Update: {
+          budget_mensal_id?: string | null
+          created_at?: string | null
+          data_gasto?: string
+          descricao?: string | null
+          id?: string
+          lancado_por?: string | null
+          unidade_id?: string | null
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lancamentos_budget_mensal_id_fkey"
+            columns: ["budget_mensal_id"]
+            isOneToOne: false
+            referencedRelation: "budgets_mensais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_budget_mensal_id_fkey"
+            columns: ["budget_mensal_id"]
+            isOneToOne: false
+            referencedRelation: "v_budgets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_lancado_por_fkey"
+            columns: ["lancado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_unidade_id_fkey"
+            columns: ["unidade_id"]
+            isOneToOne: false
+            referencedRelation: "unidades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -156,7 +218,46 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_budgets: {
+        Row: {
+          atualizado_em: string | null
+          atualizado_por: string | null
+          budget_fixo: number | null
+          diferenca_mes_anterior: number | null
+          gasto: number | null
+          id: string | null
+          mes: string | null
+          percentual_gasto: number | null
+          saldo: number | null
+          supervisor_id: string | null
+          unidade_id: string | null
+          unidade_nome: string | null
+          valor_total_mes: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budgets_mensais_atualizado_por_fkey"
+            columns: ["atualizado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budgets_mensais_unidade_id_fkey"
+            columns: ["unidade_id"]
+            isOneToOne: false
+            referencedRelation: "unidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unidades_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       current_user_role: {
