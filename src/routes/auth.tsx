@@ -33,6 +33,9 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotBusy, setForgotBusy] = useState(false);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,6 +61,19 @@ function AuthPage() {
     if (error) return toast.error("Erro no cadastro", { description: error.message });
     toast.success("Cadastro criado! Você já pode entrar.");
     setMode("signin");
+  };
+
+  const handleForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail) return;
+    setForgotBusy(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setForgotBusy(false);
+    if (error) return toast.error("Não foi possível enviar", { description: error.message });
+    toast.success("E-mail de redefinição enviado. Verifique sua caixa de entrada.");
+    setShowForgot(false);
   };
 
   return (
@@ -100,6 +116,13 @@ function AuthPage() {
                   <Button type="submit" className="w-full" disabled={busy}>
                     {busy ? "Entrando..." : "Entrar"}
                   </Button>
+                  <button
+                    type="button"
+                    onClick={() => { setForgotEmail(email); setShowForgot(true); }}
+                    className="w-full text-center text-sm text-primary hover:underline"
+                  >
+                    Esqueci minha senha
+                  </button>
                 </form>
               </TabsContent>
               <TabsContent value="signup">
@@ -127,6 +150,42 @@ function AuthPage() {
             </Tabs>
           </CardContent>
         </Card>
+
+        {showForgot && (
+          <div
+            className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setShowForgot(false)}
+          >
+            <Card className="w-full max-w-sm rounded-2xl" onClick={(e) => e.stopPropagation()}>
+              <CardHeader>
+                <CardTitle>Redefinir senha</CardTitle>
+                <CardDescription>Enviaremos um link para o seu e-mail.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleForgot} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="forgotEmail">E-mail</Label>
+                    <Input
+                      id="forgotEmail"
+                      type="email"
+                      required
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" className="flex-1" onClick={() => setShowForgot(false)}>
+                      Cancelar
+                    </Button>
+                    <Button type="submit" className="flex-1" disabled={forgotBusy}>
+                      {forgotBusy ? "Enviando..." : "Enviar link"}
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );

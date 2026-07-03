@@ -167,3 +167,25 @@ export const gerarProximoMes = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { count: count ?? 0 };
   });
+
+// Any authenticated user can list supervisors (needed for dropdowns/filters
+// across Dashboard, Meses, Relatórios, Unidades, Histórico).
+export const listSupervisores = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: roles, error: rErr } = await supabaseAdmin
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "supervisor");
+    if (rErr) throw new Error(rErr.message);
+    const ids = (roles ?? []).map((r) => r.user_id);
+    if (ids.length === 0) return [] as { id: string; nome: string }[];
+    const { data: profiles, error: pErr } = await supabaseAdmin
+      .from("profiles")
+      .select("id, nome")
+      .in("id", ids)
+      .order("nome");
+    if (pErr) throw new Error(pErr.message);
+    return (profiles ?? []).map((p) => ({ id: p.id, nome: p.nome }));
+  });
