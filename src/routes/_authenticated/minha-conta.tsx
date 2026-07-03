@@ -15,7 +15,7 @@ export const Route = createFileRoute("/_authenticated/minha-conta")({
 });
 
 function MinhaContaPage() {
-  const { user, profile, role, refresh } = useAuth();
+  const { user, profile, role, loading: authLoading, refresh } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [nome, setNome] = useState("");
@@ -29,7 +29,8 @@ function MinhaContaPage() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
+    if (authLoading || !user?.id) return;
+    setLoaded(false);
     (async () => {
       const { data, error } = await supabase
         .from("profiles")
@@ -46,7 +47,7 @@ function MinhaContaPage() {
       setAvatarPath(data?.avatar_url ?? null);
       setLoaded(true);
     })();
-  }, [user]);
+  }, [authLoading, user?.id]);
 
   useEffect(() => {
     if (!avatarPath) {
@@ -147,6 +148,15 @@ function MinhaContaPage() {
         <p className="text-sm text-muted-foreground">Atualize seus dados pessoais</p>
       </div>
 
+      {(authLoading || !loaded || !user) ? (
+        <Card>
+          <CardContent className="py-16 flex flex-col items-center justify-center gap-3 text-muted-foreground">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <p className="text-sm">Carregando seus dados…</p>
+          </CardContent>
+        </Card>
+      ) : (
+      <>
       <Card>
         <CardHeader>
           <CardTitle>Foto de perfil</CardTitle>
@@ -256,6 +266,8 @@ function MinhaContaPage() {
           </Button>
         </CardContent>
       </Card>
+      </>
+      )}
     </div>
   );
 }
