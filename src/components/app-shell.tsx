@@ -6,7 +6,7 @@ import {
   Calendar,
   BarChart3,
   Building2,
-  Users,
+  Settings,
   LogOut,
   Menu,
   X,
@@ -23,7 +23,7 @@ const NAV: NavItem[] = [
   { to: "/historico", label: "Histórico", icon: History },
   { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
   { to: "/unidades", label: "Unidades", icon: Building2, roles: ["admin", "gerente"] },
-  { to: "/usuarios", label: "Usuários", icon: Users, roles: ["admin"] },
+  { to: "/configuracoes", label: "Configurações", icon: Settings, roles: ["admin"] },
   { to: "/minha-conta", label: "Minha Conta", icon: UserCircle },
 ];
 

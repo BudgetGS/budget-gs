@@ -13,13 +13,13 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 import { Route as AuthenticatedUnidadesRouteImport } from './routes/_authenticated/unidades'
 import { Route as AuthenticatedResponsaveisRouteImport } from './routes/_authenticated/responsaveis'
 import { Route as AuthenticatedRelatoriosRouteImport } from './routes/_authenticated/relatorios'
 import { Route as AuthenticatedMinhaContaRouteImport } from './routes/_authenticated/minha-conta'
 import { Route as AuthenticatedHistoricoRouteImport } from './routes/_authenticated/historico'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedConfiguracoesRouteImport } from './routes/_authenticated/configuracoes'
 import { Route as AuthenticatedBudgetIndexRouteImport } from './routes/_authenticated/budget.index'
 import { Route as AuthenticatedBudgetMesRouteImport } from './routes/_authenticated/budget.$mes'
 
@@ -41,11 +41,6 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
-  id: '/usuarios',
-  path: '/usuarios',
-  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedUnidadesRoute = AuthenticatedUnidadesRouteImport.update({
   id: '/unidades',
@@ -78,6 +73,12 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedConfiguracoesRoute =
+  AuthenticatedConfiguracoesRouteImport.update({
+    id: '/configuracoes',
+    path: '/configuracoes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedBudgetIndexRoute =
   AuthenticatedBudgetIndexRouteImport.update({
     id: '/budget/',
@@ -94,13 +95,13 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/historico': typeof AuthenticatedHistoricoRoute
   '/minha-conta': typeof AuthenticatedMinhaContaRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
   '/responsaveis': typeof AuthenticatedResponsaveisRoute
   '/unidades': typeof AuthenticatedUnidadesRoute
-  '/usuarios': typeof AuthenticatedUsuariosRoute
   '/budget/$mes': typeof AuthenticatedBudgetMesRoute
   '/budget/': typeof AuthenticatedBudgetIndexRoute
 }
@@ -108,13 +109,13 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/historico': typeof AuthenticatedHistoricoRoute
   '/minha-conta': typeof AuthenticatedMinhaContaRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
   '/responsaveis': typeof AuthenticatedResponsaveisRoute
   '/unidades': typeof AuthenticatedUnidadesRoute
-  '/usuarios': typeof AuthenticatedUsuariosRoute
   '/budget/$mes': typeof AuthenticatedBudgetMesRoute
   '/budget': typeof AuthenticatedBudgetIndexRoute
 }
@@ -124,13 +125,13 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/_authenticated/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/historico': typeof AuthenticatedHistoricoRoute
   '/_authenticated/minha-conta': typeof AuthenticatedMinhaContaRoute
   '/_authenticated/relatorios': typeof AuthenticatedRelatoriosRoute
   '/_authenticated/responsaveis': typeof AuthenticatedResponsaveisRoute
   '/_authenticated/unidades': typeof AuthenticatedUnidadesRoute
-  '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
   '/_authenticated/budget/$mes': typeof AuthenticatedBudgetMesRoute
   '/_authenticated/budget/': typeof AuthenticatedBudgetIndexRoute
 }
@@ -140,13 +141,13 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/configuracoes'
     | '/dashboard'
     | '/historico'
     | '/minha-conta'
     | '/relatorios'
     | '/responsaveis'
     | '/unidades'
-    | '/usuarios'
     | '/budget/$mes'
     | '/budget/'
   fileRoutesByTo: FileRoutesByTo
@@ -154,13 +155,13 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/configuracoes'
     | '/dashboard'
     | '/historico'
     | '/minha-conta'
     | '/relatorios'
     | '/responsaveis'
     | '/unidades'
-    | '/usuarios'
     | '/budget/$mes'
     | '/budget'
   id:
@@ -169,13 +170,13 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/reset-password'
+    | '/_authenticated/configuracoes'
     | '/_authenticated/dashboard'
     | '/_authenticated/historico'
     | '/_authenticated/minha-conta'
     | '/_authenticated/relatorios'
     | '/_authenticated/responsaveis'
     | '/_authenticated/unidades'
-    | '/_authenticated/usuarios'
     | '/_authenticated/budget/$mes'
     | '/_authenticated/budget/'
   fileRoutesById: FileRoutesById
@@ -216,13 +217,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/usuarios': {
-      id: '/_authenticated/usuarios'
-      path: '/usuarios'
-      fullPath: '/usuarios'
-      preLoaderRoute: typeof AuthenticatedUsuariosRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/unidades': {
       id: '/_authenticated/unidades'
@@ -266,6 +260,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/configuracoes': {
+      id: '/_authenticated/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof AuthenticatedConfiguracoesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/budget/': {
       id: '/_authenticated/budget/'
       path: '/budget'
@@ -284,25 +285,25 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedConfiguracoesRoute: typeof AuthenticatedConfiguracoesRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedHistoricoRoute: typeof AuthenticatedHistoricoRoute
   AuthenticatedMinhaContaRoute: typeof AuthenticatedMinhaContaRoute
   AuthenticatedRelatoriosRoute: typeof AuthenticatedRelatoriosRoute
   AuthenticatedResponsaveisRoute: typeof AuthenticatedResponsaveisRoute
   AuthenticatedUnidadesRoute: typeof AuthenticatedUnidadesRoute
-  AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
   AuthenticatedBudgetMesRoute: typeof AuthenticatedBudgetMesRoute
   AuthenticatedBudgetIndexRoute: typeof AuthenticatedBudgetIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedConfiguracoesRoute: AuthenticatedConfiguracoesRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedHistoricoRoute: AuthenticatedHistoricoRoute,
   AuthenticatedMinhaContaRoute: AuthenticatedMinhaContaRoute,
   AuthenticatedRelatoriosRoute: AuthenticatedRelatoriosRoute,
   AuthenticatedResponsaveisRoute: AuthenticatedResponsaveisRoute,
   AuthenticatedUnidadesRoute: AuthenticatedUnidadesRoute,
-  AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
   AuthenticatedBudgetMesRoute: AuthenticatedBudgetMesRoute,
   AuthenticatedBudgetIndexRoute: AuthenticatedBudgetIndexRoute,
 }

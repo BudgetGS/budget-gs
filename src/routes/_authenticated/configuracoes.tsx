@@ -3,25 +3,81 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Plus, Trash2, Building2 } from "lucide-react";
+import { Plus, Trash2, Building2, ArrowUp, ArrowDown, Shield } from "lucide-react";
 import { createUser, updateUserRole, deleteUser } from "@/lib/admin.functions";
+import {
+  moveItem,
+  useWidgetConfig,
+  type WidgetDef,
+} from "@/lib/widget-config";
 
-export const Route = createFileRoute("/_authenticated/usuarios")({
-  component: UsuariosPage,
+export const Route = createFileRoute("/_authenticated/configuracoes")({
+  component: ConfiguracoesPage,
 });
+
+const DASHBOARD_WIDGETS: WidgetDef[] = [
+  { id: "stats", label: "Cards de totais (Budget, Gasto, Saldo, %)" },
+  { id: "estouradas", label: "Alerta: unidades acima de 100%" },
+  { id: "chart", label: "Gráfico de distribuição por unidade" },
+  { id: "ai", label: "Análise de IA" },
+];
+
+const RELATORIOS_WIDGETS: WidgetDef[] = [
+  { id: "budget-x-gasto", label: "Gráfico Budget x Gasto (mensal)" },
+  { id: "gasto-por-unidade", label: "Gasto por unidade (barras)" },
+  { id: "evolucao-dupla", label: "Evolução mensal — acumulado vs fixo (lado a lado)" },
+  { id: "acumulado-tabela", label: "Acumulado por unidade (tabela)" },
+  { id: "ranking-estouros", label: "Ranking de estouros" },
+];
+
+function ConfiguracoesPage() {
+  const { role } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (role && role !== "admin") navigate({ to: "/dashboard" });
+  }, [role, navigate]);
+
+  if (role !== "admin") return null;
+
+  return (
+    <div className="space-y-6 max-w-6xl mx-auto">
+      <div>
+        <h1 className="text-2xl md:text-3xl font-bold">Configurações</h1>
+        <p className="text-sm text-muted-foreground">Gestão de acessos e personalização de telas</p>
+      </div>
+      <Tabs defaultValue="users">
+        <TabsList className="rounded-xl">
+          <TabsTrigger value="users">Usuários e Acessos</TabsTrigger>
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
+        </TabsList>
+        <TabsContent value="users" className="mt-6"><UsersTab /></TabsContent>
+        <TabsContent value="dashboard" className="mt-6">
+          <WidgetsTab scope="dashboard" defs={DASHBOARD_WIDGETS} title="Widgets do Dashboard" />
+        </TabsContent>
+        <TabsContent value="relatorios" className="mt-6">
+          <WidgetsTab scope="relatorios" defs={RELATORIOS_WIDGETS} title="Widgets dos Relatórios" />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+/* ------------------------ Users tab ------------------------ */
 
 type UserRow = { id: string; nome: string; email: string; role: string; unidades: number };
 
-function UsuariosPage() {
-  const { role } = useAuth();
-  const navigate = useNavigate();
+function UsersTab() {
   const createFn = useServerFn(createUser);
   const updateRoleFn = useServerFn(updateUserRole);
   const deleteFn = useServerFn(deleteUser);
@@ -33,10 +89,7 @@ function UsuariosPage() {
   const [form, setForm] = useState({ nome: "", email: "", password: "", role: "supervisor" as const });
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    if (role !== "admin") { navigate({ to: "/dashboard" }); return; }
-    load();
-  }, [role, navigate]);
+  useEffect(() => { load(); }, []);
 
   const load = async () => {
     const [{ data: profiles }, { data: roles }, { data: uns }] = await Promise.all([
@@ -62,26 +115,18 @@ function UsuariosPage() {
       setOpen(false);
       setForm({ nome: "", email: "", password: "", role: "supervisor" });
       load();
-    } catch (e: any) {
-      toast.error(e.message);
-    } finally { setBusy(false); }
+    } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
   };
 
   const changeRole = async (id: string, newRole: string) => {
-    try {
-      await updateRoleFn({ data: { user_id: id, role: newRole as any } });
-      toast.success("Papel atualizado");
-      load();
-    } catch (e: any) { toast.error(e.message); }
+    try { await updateRoleFn({ data: { user_id: id, role: newRole as any } }); toast.success("Papel atualizado"); load(); }
+    catch (e: any) { toast.error(e.message); }
   };
 
   const remove = async (id: string) => {
     if (!confirm("Excluir esse usuário?")) return;
-    try {
-      await deleteFn({ data: { user_id: id } });
-      toast.success("Excluído");
-      load();
-    } catch (e: any) { toast.error(e.message); }
+    try { await deleteFn({ data: { user_id: id } }); toast.success("Excluído"); load(); }
+    catch (e: any) { toast.error(e.message); }
   };
 
   const linkUnidade = async (unidadeId: string, supervisorId: string | null) => {
@@ -92,11 +137,16 @@ function UsuariosPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] sm:flex sm:items-end sm:justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-2xl md:text-3xl font-bold">Usuários</h1>
-          <p className="text-sm text-muted-foreground">Gestão de acessos e vínculos</p>
+    <div className="space-y-4">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 flex items-start gap-3">
+          <Shield className="h-5 w-5 text-primary mt-0.5" />
+          <div className="text-sm">
+            <p className="font-semibold text-primary">Admin = acesso total</p>
+            <p className="text-muted-foreground">
+              Usuários com papel <b>admin</b> têm acesso irrestrito: todas as unidades, todos os lançamentos e gestão completa de usuários.
+            </p>
+          </div>
         </div>
         <Button className="rounded-xl" onClick={() => setOpen(true)}><Plus className="h-4 w-4" />Novo usuário</Button>
       </div>
@@ -151,7 +201,7 @@ function UsuariosPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>Novo usuário</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2"><Label>Nome (ex: Equipe Gabriel)</Label>
+            <div className="space-y-2"><Label>Nome</Label>
               <Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
             <div className="space-y-2"><Label>E-mail</Label>
               <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
@@ -198,5 +248,45 @@ function UsuariosPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+/* ------------------------ Widgets tab ------------------------ */
+
+function WidgetsTab({ scope, defs, title }: { scope: string; defs: WidgetDef[]; title: string }) {
+  const { state, save } = useWidgetConfig(scope, defs);
+  const labelMap = new Map(defs.map((d) => [d.id, d.label]));
+
+  const toggle = (id: string, v: boolean) =>
+    save(state.map((s) => (s.id === id ? { ...s, enabled: v } : s)));
+
+  const move = (idx: number, dir: -1 | 1) => save(moveItem(state, idx, dir));
+
+  const resetAll = () => save(defs.map((d) => ({ id: d.id, enabled: true })));
+
+  return (
+    <Card className="rounded-2xl">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>{title}</CardTitle>
+        <Button size="sm" variant="ghost" onClick={resetAll}>Restaurar padrão</Button>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <p className="text-sm text-muted-foreground mb-2">
+          Ative/desative widgets e reordene com as setas. A configuração é aplicada ao carregar a tela.
+        </p>
+        {state.map((s, i) => (
+          <div key={s.id} className="flex items-center gap-3 rounded-xl border border-border p-3">
+            <Checkbox checked={s.enabled} onCheckedChange={(v) => toggle(s.id, !!v)} />
+            <span className="flex-1 text-sm font-medium">{labelMap.get(s.id) ?? s.id}</span>
+            <Button size="icon" variant="ghost" onClick={() => move(i, -1)} disabled={i === 0}>
+              <ArrowUp className="h-4 w-4" />
+            </Button>
+            <Button size="icon" variant="ghost" onClick={() => move(i, 1)} disabled={i === state.length - 1}>
+              <ArrowDown className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 }
