@@ -11,8 +11,17 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { fetchSupervisores, type Supervisor } from "@/lib/supervisores";
 import { brl, fmtPct, monthLabel, pct, saldoBadgeBg } from "@/lib/format";
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend, LineChart, Line, CartesianGrid } from "recharts";
 import { Download, Building2 } from "lucide-react";
+import { useWidgetConfig } from "@/lib/widget-config";
+
+const RELATORIOS_WIDGETS = [
+  { id: "budget-x-gasto", label: "Budget x Gasto (mensal)" },
+  { id: "gasto-por-unidade", label: "Gasto por unidade" },
+  { id: "evolucao-dupla", label: "Evolução mensal — acumulado vs fixo" },
+  { id: "acumulado-tabela", label: "Acumulado por unidade (tabela)" },
+  { id: "ranking-estouros", label: "Ranking de estouros" },
+];
 
 export const Route = createFileRoute("/_authenticated/relatorios")({
   component: Relatorios,
@@ -37,6 +46,7 @@ function Relatorios() {
   const [considerarAcumulado, setConsiderarAcumulado] = useState(true);
   const [unidadeIds, setUnidadeIds] = useState<string[]>([]);
   const [allUnidades, setAllUnidades] = useState<{ id: string; nome: string }[]>([]);
+  const { state: widgets } = useWidgetConfig("relatorios", RELATORIOS_WIDGETS);
 
   useEffect(() => {
     (async () => {
@@ -84,6 +94,24 @@ function Relatorios() {
     return Array.from(map.values()).map((x) => ({ ...x, label: monthLabel(x.mes).slice(0, 3) }));
   }, [filtered, year, considerarAcumulado]);
 
+  const monthlyDual = useMemo(() => {
+    const map = new Map<string, { mes: string; budgetAcum: number; budgetFixo: number; gasto: number }>();
+    for (let m = 1; m <= 12; m++) {
+      const k = `${year}-${String(m).padStart(2, "0")}-01`;
+      map.set(k, { mes: k, budgetAcum: 0, budgetFixo: 0, gasto: 0 });
+    }
+    filtered.forEach((r) => {
+      const k = r.mes.slice(0, 10);
+      const cur = map.get(k);
+      if (cur) {
+        cur.budgetAcum += Number(r.budget);
+        cur.budgetFixo += Number(r.unidades.budget_base);
+        cur.gasto += Number(r.gasto);
+      }
+    });
+    return Array.from(map.values()).map((x) => ({ ...x, label: monthLabel(x.mes).slice(0, 3) }));
+  }, [filtered, year]);
+
   const byUnidade = useMemo(() => {
     type Agg = {
       nome: string;
@@ -117,6 +145,14 @@ function Relatorios() {
   }, [filtered, considerarAcumulado]);
 
   const estouros = byUnidade.filter((u) => (u.pctVal ?? 0) > 1);
+
+  const gastoPorUnidade = useMemo(
+    () => byUnidade.map((u) => ({ nome: u.nome, gasto: u.gasto })).sort((a, b) => b.gasto - a.gasto),
+    [byUnidade],
+  );
+
+  const isEnabled = (id: string) => widgets.find((w) => w.id === id)?.enabled ?? true;
+  const orderedIds = widgets.filter((w) => w.enabled).map((w) => w.id);
 
   const exportCsv = () => {
     const header = considerarAcumulado
@@ -195,92 +231,154 @@ function Relatorios() {
         </div>
       </div>
 
-      <Card className="rounded-2xl">
-        <CardHeader><CardTitle>Budget x Gasto — {year}</CardTitle></CardHeader>
-        <CardContent>
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthly}>
-                <XAxis dataKey="label" fontSize={11} />
-                <YAxis fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(v: number) => brl(v)} contentStyle={{ borderRadius: 12 }} />
-                <Legend />
-                <Bar dataKey="budget" name={considerarAcumulado ? "Budget total" : "Budget fixo"} fill="var(--color-secondary)" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="gasto" name="Gasto" fill="var(--color-primary)" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+      {orderedIds.map((id) => {
+        if (id === "budget-x-gasto") return (
+          <Card key={id} className="rounded-2xl">
+            <CardHeader><CardTitle>Budget x Gasto — {year}</CardTitle></CardHeader>
+            <CardContent>
+              <div className="h-72">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={monthly}>
+                    <XAxis dataKey="label" fontSize={11} />
+                    <YAxis fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                    <Tooltip formatter={(v: number) => brl(v)} contentStyle={{ borderRadius: 12 }} />
+                    <Legend />
+                    <Bar dataKey="budget" name={considerarAcumulado ? "Budget total" : "Budget fixo"} fill="var(--color-secondary)" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="gasto" name="Gasto" fill="var(--color-primary)" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        );
+        if (id === "gasto-por-unidade") return (
+          <Card key={id} className="rounded-2xl">
+            <CardHeader><CardTitle>Gasto por unidade — {year}</CardTitle></CardHeader>
+            <CardContent>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={gastoPorUnidade} margin={{ top: 10, right: 10, left: 0, bottom: 60 }}>
+                    <XAxis dataKey="nome" angle={-30} textAnchor="end" fontSize={11} interval={0} />
+                    <YAxis fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                    <Tooltip formatter={(v: number) => brl(v)} contentStyle={{ borderRadius: 12 }} />
+                    <Bar dataKey="gasto" name="Gasto" fill="var(--color-primary)" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        );
+        if (id === "evolucao-dupla") return (
+          <div key={id} className="grid gap-6 lg:grid-cols-2">
+            <Card className="rounded-2xl">
+              <CardHeader><CardTitle>Evolução — com acumulado</CardTitle></CardHeader>
+              <CardContent>
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={monthlyDual}>
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                      <XAxis dataKey="label" fontSize={11} />
+                      <YAxis fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                      <Tooltip formatter={(v: number) => brl(v)} contentStyle={{ borderRadius: 12 }} />
+                      <Legend />
+                      <Line type="monotone" dataKey="budgetAcum" name="Budget acumulado" stroke="var(--color-secondary)" strokeWidth={2} />
+                      <Line type="monotone" dataKey="gasto" name="Gasto" stroke="var(--color-primary)" strokeWidth={2} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="rounded-2xl">
+              <CardHeader><CardTitle>Evolução — só budget fixo</CardTitle></CardHeader>
+              <CardContent>
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={monthlyDual}>
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                      <XAxis dataKey="label" fontSize={11} />
+                      <YAxis fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                      <Tooltip formatter={(v: number) => brl(v)} contentStyle={{ borderRadius: 12 }} />
+                      <Legend />
+                      <Line type="monotone" dataKey="budgetFixo" name="Budget fixo" stroke="var(--color-secondary)" strokeWidth={2} />
+                      <Line type="monotone" dataKey="gasto" name="Gasto" stroke="var(--color-primary)" strokeWidth={2} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="rounded-2xl overflow-hidden">
-          <CardHeader><CardTitle>{considerarAcumulado ? "Acumulado por unidade" : "Por unidade (sem rollover)"}</CardTitle></CardHeader>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/60">
-                <tr className="text-left">
-                  <th className="px-4 py-3 font-semibold">Unidade</th>
-                  {considerarAcumulado ? (
-                    <>
-                      <th className="px-4 py-3 font-semibold text-right">Budget fixo</th>
-                      <th className="px-4 py-3 font-semibold text-right">Saldo acum.</th>
-                      <th className="px-4 py-3 font-semibold text-right">Total</th>
-                    </>
-                  ) : (
-                    <th className="px-4 py-3 font-semibold text-right">Budget</th>
-                  )}
-                  <th className="px-4 py-3 font-semibold text-right">Gasto</th>
-                  <th className="px-4 py-3 font-semibold text-right">Saldo</th>
-                  <th className="px-4 py-3 font-semibold text-right">%</th>
-                </tr>
-              </thead>
-              <tbody>
-                {byUnidade.map((u) => (
-                  <tr key={u.nome} className="border-t border-border/60">
-                    <td className="px-4 py-2 font-medium">{u.nome}</td>
+        );
+        if (id === "acumulado-tabela") return (
+          <Card key={id} className="rounded-2xl overflow-hidden">
+            <CardHeader><CardTitle>{considerarAcumulado ? "Acumulado por unidade" : "Por unidade (sem rollover)"}</CardTitle></CardHeader>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/60">
+                  <tr className="text-left">
+                    <th className="px-4 py-3 font-semibold">Unidade</th>
                     {considerarAcumulado ? (
                       <>
-                        <td className="px-4 py-2 text-right">{brl(u.budgetFixo)}</td>
-                        <td className={`px-4 py-2 text-right ${u.acumulado < 0 ? "text-destructive" : ""}`}>{brl(u.acumulado)}</td>
-                        <td className="px-4 py-2 text-right font-semibold">{brl(u.budget)}</td>
+                        <th className="px-4 py-3 font-semibold text-right">Budget fixo</th>
+                        <th className="px-4 py-3 font-semibold text-right">Saldo acum.</th>
+                        <th className="px-4 py-3 font-semibold text-right">Total</th>
                       </>
                     ) : (
-                      <td className="px-4 py-2 text-right">{brl(u.budget)}</td>
+                      <th className="px-4 py-3 font-semibold text-right">Budget</th>
                     )}
-                    <td className="px-4 py-2 text-right">{brl(u.gasto)}</td>
-                    <td className={`px-4 py-2 text-right ${u.saldo < 0 ? "text-destructive" : ""}`}>{brl(u.saldo)}</td>
-                    <td className="px-4 py-2 text-right">
-                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${saldoBadgeBg(u.pctVal)}`}>{fmtPct(u.pctVal)}</span>
-                    </td>
+                    <th className="px-4 py-3 font-semibold text-right">Gasto</th>
+                    <th className="px-4 py-3 font-semibold text-right">Saldo</th>
+                    <th className="px-4 py-3 font-semibold text-right">%</th>
                   </tr>
-                ))}
-                {byUnidade.length === 0 && (
-                  <tr><td colSpan={considerarAcumulado ? 7 : 5} className="text-center py-8 text-muted-foreground">Sem dados no período.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-
-        <Card className="rounded-2xl">
-          <CardHeader><CardTitle>Ranking de estouros</CardTitle></CardHeader>
-          <CardContent>
-            {estouros.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhum estouro acumulado no ano.</p>
-            ) : (
-              <ol className="space-y-2">
-                {estouros.map((u, i) => (
-                  <li key={u.nome} className="flex items-center justify-between rounded-xl bg-destructive/5 px-3 py-2">
-                    <span className="font-medium"><span className="text-destructive font-bold mr-2">#{i + 1}</span>{u.nome}</span>
-                    <span className="text-destructive font-bold">{fmtPct(u.pctVal)}</span>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                </thead>
+                <tbody>
+                  {byUnidade.map((u) => (
+                    <tr key={u.nome} className="border-t border-border/60">
+                      <td className="px-4 py-2 font-medium">{u.nome}</td>
+                      {considerarAcumulado ? (
+                        <>
+                          <td className="px-4 py-2 text-right">{brl(u.budgetFixo)}</td>
+                          <td className={`px-4 py-2 text-right ${u.acumulado < 0 ? "text-destructive" : ""}`}>{brl(u.acumulado)}</td>
+                          <td className="px-4 py-2 text-right font-semibold">{brl(u.budget)}</td>
+                        </>
+                      ) : (
+                        <td className="px-4 py-2 text-right">{brl(u.budget)}</td>
+                      )}
+                      <td className="px-4 py-2 text-right">{brl(u.gasto)}</td>
+                      <td className={`px-4 py-2 text-right ${u.saldo < 0 ? "text-destructive" : ""}`}>{brl(u.saldo)}</td>
+                      <td className="px-4 py-2 text-right">
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${saldoBadgeBg(u.pctVal)}`}>{fmtPct(u.pctVal)}</span>
+                      </td>
+                    </tr>
+                  ))}
+                  {byUnidade.length === 0 && (
+                    <tr><td colSpan={considerarAcumulado ? 7 : 5} className="text-center py-8 text-muted-foreground">Sem dados no período.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        );
+        if (id === "ranking-estouros") return (
+          <Card key={id} className="rounded-2xl">
+            <CardHeader><CardTitle>Ranking de estouros</CardTitle></CardHeader>
+            <CardContent>
+              {estouros.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhum estouro acumulado no ano.</p>
+              ) : (
+                <ol className="space-y-2">
+                  {estouros.map((u, i) => (
+                    <li key={u.nome} className="flex items-center justify-between rounded-xl bg-destructive/5 px-3 py-2">
+                      <span className="font-medium"><span className="text-destructive font-bold mr-2">#{i + 1}</span>{u.nome}</span>
+                      <span className="text-destructive font-bold">{fmtPct(u.pctVal)}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </CardContent>
+          </Card>
+        );
+        return null;
+      })}
     </div>
   );
 }
