@@ -151,7 +151,6 @@ function Relatorios() {
     [byUnidade],
   );
 
-  const isEnabled = (id: string) => widgets.find((w) => w.id === id)?.enabled ?? true;
   const orderedIds = widgets.filter((w) => w.enabled).map((w) => w.id);
 
   const exportCsv = () => {
