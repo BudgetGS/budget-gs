@@ -13,7 +13,6 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 import { Route as AuthenticatedUnidadesRouteImport } from './routes/_authenticated/unidades'
 import { Route as AuthenticatedResponsaveisRouteImport } from './routes/_authenticated/responsaveis'
 import { Route as AuthenticatedRelatoriosRouteImport } from './routes/_authenticated/relatorios'
@@ -42,11 +41,6 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
-  id: '/usuarios',
-  path: '/usuarios',
-  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedUnidadesRoute = AuthenticatedUnidadesRouteImport.update({
   id: '/unidades',
@@ -108,7 +102,6 @@ export interface FileRoutesByFullPath {
   '/relatorios': typeof AuthenticatedRelatoriosRoute
   '/responsaveis': typeof AuthenticatedResponsaveisRoute
   '/unidades': typeof AuthenticatedUnidadesRoute
-  '/usuarios': typeof AuthenticatedUsuariosRoute
   '/budget/$mes': typeof AuthenticatedBudgetMesRoute
   '/budget/': typeof AuthenticatedBudgetIndexRoute
 }
@@ -123,7 +116,6 @@ export interface FileRoutesByTo {
   '/relatorios': typeof AuthenticatedRelatoriosRoute
   '/responsaveis': typeof AuthenticatedResponsaveisRoute
   '/unidades': typeof AuthenticatedUnidadesRoute
-  '/usuarios': typeof AuthenticatedUsuariosRoute
   '/budget/$mes': typeof AuthenticatedBudgetMesRoute
   '/budget': typeof AuthenticatedBudgetIndexRoute
 }
@@ -140,7 +132,6 @@ export interface FileRoutesById {
   '/_authenticated/relatorios': typeof AuthenticatedRelatoriosRoute
   '/_authenticated/responsaveis': typeof AuthenticatedResponsaveisRoute
   '/_authenticated/unidades': typeof AuthenticatedUnidadesRoute
-  '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
   '/_authenticated/budget/$mes': typeof AuthenticatedBudgetMesRoute
   '/_authenticated/budget/': typeof AuthenticatedBudgetIndexRoute
 }
@@ -157,7 +148,6 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/responsaveis'
     | '/unidades'
-    | '/usuarios'
     | '/budget/$mes'
     | '/budget/'
   fileRoutesByTo: FileRoutesByTo
@@ -172,7 +162,6 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/responsaveis'
     | '/unidades'
-    | '/usuarios'
     | '/budget/$mes'
     | '/budget'
   id:
@@ -188,7 +177,6 @@ export interface FileRouteTypes {
     | '/_authenticated/relatorios'
     | '/_authenticated/responsaveis'
     | '/_authenticated/unidades'
-    | '/_authenticated/usuarios'
     | '/_authenticated/budget/$mes'
     | '/_authenticated/budget/'
   fileRoutesById: FileRoutesById
@@ -229,13 +217,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/usuarios': {
-      id: '/_authenticated/usuarios'
-      path: '/usuarios'
-      fullPath: '/usuarios'
-      preLoaderRoute: typeof AuthenticatedUsuariosRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/unidades': {
       id: '/_authenticated/unidades'
@@ -311,7 +292,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedRelatoriosRoute: typeof AuthenticatedRelatoriosRoute
   AuthenticatedResponsaveisRoute: typeof AuthenticatedResponsaveisRoute
   AuthenticatedUnidadesRoute: typeof AuthenticatedUnidadesRoute
-  AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
   AuthenticatedBudgetMesRoute: typeof AuthenticatedBudgetMesRoute
   AuthenticatedBudgetIndexRoute: typeof AuthenticatedBudgetIndexRoute
 }
@@ -324,7 +304,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedRelatoriosRoute: AuthenticatedRelatoriosRoute,
   AuthenticatedResponsaveisRoute: AuthenticatedResponsaveisRoute,
   AuthenticatedUnidadesRoute: AuthenticatedUnidadesRoute,
-  AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
   AuthenticatedBudgetMesRoute: AuthenticatedBudgetMesRoute,
   AuthenticatedBudgetIndexRoute: AuthenticatedBudgetIndexRoute,
 }
