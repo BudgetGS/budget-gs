@@ -82,7 +82,7 @@ function AuthPage() {
         <div className="mb-8 text-center">
           <div className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2 text-primary-foreground font-bold text-xl tracking-tight">
             <span className="h-2 w-2 rounded-full bg-secondary" />
-            GoodStorage
+            GS
           </div>
           <h1 className="mt-6 text-2xl font-bold text-foreground">
             Controle de Budget Mensal
