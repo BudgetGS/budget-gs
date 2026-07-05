@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { fetchSupervisores, type Supervisor } from "@/lib/supervisores";
 
 export const Route = createFileRoute("/_authenticated/budget/$mes")({
@@ -42,6 +44,7 @@ function BudgetMes() {
   const [bulkEdit, setBulkEdit] = useState(false);
   const [bulkValues, setBulkValues] = useState<Record<string, string>>({});
   const [savingBulk, setSavingBulk] = useState(false);
+  const [considerarAcumulado, setConsiderarAcumulado] = useState(true);
 
   const load = async () => {
     setLoading(true);
@@ -82,10 +85,13 @@ function BudgetMes() {
   );
 
   const totals = useMemo(() => {
-    const budget = filtered.reduce((s, r) => s + Number(r.budget), 0);
+    const budget = filtered.reduce(
+      (s, r) => s + Number(considerarAcumulado ? r.budget : r.unidades.budget_base),
+      0,
+    );
     const gasto = filtered.reduce((s, r) => s + Number(r.gasto), 0);
     return { budget, gasto, saldo: budget - gasto, pct: pct(gasto, budget) };
-  }, [filtered]);
+  }, [filtered, considerarAcumulado]);
 
   const startBulkEdit = () => {
     const init: Record<string, string> = {};
@@ -227,6 +233,10 @@ function BudgetMes() {
         {compareMeses.length > 0 && (
           <Button variant="ghost" size="sm" onClick={() => setCompareMeses([])}>Limpar</Button>
         )}
+        <div className="flex items-center gap-2 sm:ml-auto rounded-xl border px-3 py-2">
+          <Switch id="acumulado-mes" checked={considerarAcumulado} onCheckedChange={setConsiderarAcumulado} />
+          <Label htmlFor="acumulado-mes" className="text-sm cursor-pointer">Considerar acumulado</Label>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
