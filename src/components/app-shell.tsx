@@ -58,7 +58,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="px-6 py-6 border-b border-border">
           <div className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-1.5 text-primary-foreground font-bold tracking-tight">
             <span className="h-1.5 w-1.5 rounded-full bg-secondary" />
-            GoodStorage
+            GS
           </div>
           <p className="mt-2 text-xs text-muted-foreground font-medium">
             Controle de Budget
@@ -101,7 +101,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="w-64 h-full bg-sidebar border-r border-border p-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
               <div className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-1.5 text-primary-foreground font-bold">
-                GoodStorage
+                GS
               </div>
               <Button variant="ghost" size="icon" onClick={() => setOpen(false)}>
                 <X className="h-5 w-5" />
