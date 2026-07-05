@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { addMonths, brl, currentMonthKey, fmtPct, monthFirstDay, monthLabel, pct } from "@/lib/format";
-import { AlertTriangle, ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Wallet, Sparkles, Loader2 } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Wallet, Sparkles, Loader2, ArrowUp, ArrowDown, Minus, Activity, Target } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fetchSupervisores, type Supervisor } from "@/lib/supervisores";
 import { useWidgetConfig } from "@/lib/widget-config";
@@ -35,6 +35,9 @@ const DASHBOARD_WIDGETS = [
   { id: "estouradas", label: "Alerta de estouros" },
   { id: "chart", label: "Distribuição por unidade" },
   { id: "ai", label: "Análise IA" },
+  { id: "resumo-exec", label: "Resumo executivo", defaultEnabled: false },
+  { id: "saude-unidades", label: "Saúde por unidade", defaultEnabled: false },
+  { id: "projecao-ano", label: "Projeção de fechamento do ano", defaultEnabled: false },
 ];
 
 function Dashboard() {
@@ -42,6 +45,8 @@ function Dashboard() {
   const isSup = role === "supervisor";
   const [mesKey, setMesKey] = useState<string>(currentMonthKey());
   const [rows, setRows] = useState<Row[]>([]);
+  const [prevRows, setPrevRows] = useState<Row[]>([]);
+  const [ytdRows, setYtdRows] = useState<Row[]>([]);
   const [supervisores, setSupervisores] = useState<Supervisor[]>([]);
   const [filterSup, setFilterSup] = useState<string>("all");
   const [loading, setLoading] = useState(true);
@@ -51,11 +56,28 @@ function Dashboard() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const { data } = await supabase
-        .from("budgets_mensais")
-        .select("unidade_id, budget, gasto, unidades!inner(id, nome, supervisor_id, budget_base)")
-        .eq("mes", monthFirstDay(mesKey));
-      setRows((data as any) ?? []);
+      const cur = monthFirstDay(mesKey);
+      const prev = monthFirstDay(addMonths(mesKey, -1));
+      const year = Number(mesKey.slice(0, 4));
+      const yStart = `${year}-01-01`;
+      const [{ data: curData }, { data: prevData }, { data: ytdData }] = await Promise.all([
+        supabase
+          .from("budgets_mensais")
+          .select("unidade_id, budget, gasto, unidades!inner(id, nome, supervisor_id, budget_base)")
+          .eq("mes", cur),
+        supabase
+          .from("budgets_mensais")
+          .select("unidade_id, budget, gasto, unidades!inner(id, nome, supervisor_id, budget_base)")
+          .eq("mes", prev),
+        supabase
+          .from("budgets_mensais")
+          .select("unidade_id, budget, gasto, mes, unidades!inner(id, nome, supervisor_id, budget_base)")
+          .gte("mes", yStart)
+          .lte("mes", cur),
+      ]);
+      setRows((curData as any) ?? []);
+      setPrevRows((prevData as any) ?? []);
+      setYtdRows((ytdData as any) ?? []);
       if (!isSup) {
         setSupervisores(await fetchSupervisores());
       }
@@ -104,6 +126,42 @@ function Dashboard() {
 
   const isEnabled = (id: string) => widgets.find((w) => w.id === id)?.enabled ?? true;
   const orderedIds = widgets.filter((w) => w.enabled).map((w) => w.id);
+
+  // ---------- Resumo executivo (comparação vs. mês anterior) ----------
+  const prevFiltered = filterSup === "all" ? prevRows : prevRows.filter((r) => r.unidades.supervisor_id === filterSup);
+  const prevTotals = (() => {
+    const budget = prevFiltered.reduce((s, r) => s + (considerarAcumulado ? Number(r.budget) : Number(r.unidades.budget_base)), 0);
+    const gasto = prevFiltered.reduce((s, r) => s + Number(r.gasto), 0);
+    return { budget, gasto, saldo: budget - gasto, pct: pct(gasto, budget) };
+  })();
+
+  // ---------- Saúde por unidade ----------
+  const saude = withEffectiveBudget.map((r) => {
+    const p = r.budgetEff > 0 ? Number(r.gasto) / r.budgetEff : 0;
+    const tone: "ok" | "atencao" | "critico" = p > 1 ? "critico" : p > 0.7 ? "atencao" : "ok";
+    return { nome: r.unidades.nome, pct: p, tone };
+  }).sort((a, b) => b.pct - a.pct);
+  const saudeCount = {
+    ok: saude.filter((s) => s.tone === "ok").length,
+    atencao: saude.filter((s) => s.tone === "atencao").length,
+    critico: saude.filter((s) => s.tone === "critico").length,
+  };
+
+  // ---------- Projeção de fechamento do ano ----------
+  const ytdFiltered = filterSup === "all" ? ytdRows : ytdRows.filter((r) => r.unidades.supervisor_id === filterSup);
+  const projecao = (() => {
+    const mesesUnicos = new Set(ytdFiltered.map((r: any) => (r.mes as string).slice(0, 7)));
+    const nMeses = Math.max(mesesUnicos.size, 1);
+    const gastoYtd = ytdFiltered.reduce((s, r) => s + Number(r.gasto), 0);
+    const mediaMensal = gastoYtd / nMeses;
+    const gastoProjetado = mediaMensal * 12;
+    // Budget anual: budget_base × 12 por unidade distinta (visão simples e estável).
+    const unidadesUnicas = new Map<string, number>();
+    ytdFiltered.forEach((r) => unidadesUnicas.set(r.unidade_id, Number(r.unidades.budget_base)));
+    const budgetAnual = Array.from(unidadesUnicas.values()).reduce((s, v) => s + v, 0) * 12;
+    const dentro = gastoProjetado <= budgetAnual;
+    return { nMeses, mediaMensal, gastoProjetado, budgetAnual, dentro, diff: budgetAnual - gastoProjetado };
+  })();
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -221,8 +279,105 @@ function Dashboard() {
             }))}
           />
         );
+        if (id === "resumo-exec" && isEnabled("resumo-exec")) return (
+          <div key="resumo-exec" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <DeltaCard label="Budget" atual={totals.budget} anterior={prevTotals.budget} inverse />
+            <DeltaCard label="Gasto" atual={totals.gasto} anterior={prevTotals.gasto} inverse={false} />
+            <DeltaCard label="Saldo" atual={totals.saldo} anterior={prevTotals.saldo} inverse />
+            <DeltaCard label="% Geral" atual={totals.pct ?? 0} anterior={prevTotals.pct ?? 0} inverse={false} percent />
+          </div>
+        );
+        if (id === "saude-unidades" && isEnabled("saude-unidades")) return (
+          <Card key="saude" className="rounded-2xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Activity className="h-4 w-4" /> Saúde por unidade</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                <span className="text-emerald-600 font-semibold">{saudeCount.ok} excelente{saudeCount.ok === 1 ? "" : "s"}</span>
+                {" · "}
+                <span className="text-amber-600 font-semibold">{saudeCount.atencao} em atenção</span>
+                {" · "}
+                <span className="text-destructive font-semibold">{saudeCount.critico} crítica{saudeCount.critico === 1 ? "" : "s"}</span>
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {saude.map((s) => {
+                  const cls = s.tone === "ok"
+                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                    : s.tone === "atencao"
+                    ? "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+                    : "bg-destructive/15 text-destructive";
+                  return (
+                    <span key={s.nome} className={`rounded-full px-3 py-1 text-xs font-semibold ${cls}`}>
+                      {s.nome} — {fmtPct(s.pct)}
+                    </span>
+                  );
+                })}
+                {saude.length === 0 && <p className="text-sm text-muted-foreground">Sem unidades no filtro atual.</p>}
+              </div>
+            </CardContent>
+          </Card>
+        );
+        if (id === "projecao-ano" && isEnabled("projecao-ano")) return (
+          <Card key="projecao" className="rounded-2xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Target className="h-4 w-4" /> Projeção de fechamento do ano</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                <MiniStat label="Meses considerados" value={String(projecao.nMeses)} />
+                <MiniStat label="Média mensal" value={brl(projecao.mediaMensal)} />
+                <MiniStat label="Gasto projetado (ano)" value={brl(projecao.gastoProjetado)} />
+                <MiniStat label="Budget anual (fixo × 12)" value={brl(projecao.budgetAnual)} />
+              </div>
+              <div className={`rounded-xl p-4 border ${projecao.dentro ? "border-emerald-400/60 bg-emerald-50 dark:bg-emerald-950/20" : "border-destructive/40 bg-destructive/5"}`}>
+                <p className={`text-sm font-semibold ${projecao.dentro ? "text-emerald-700 dark:text-emerald-400" : "text-destructive"}`}>
+                  {projecao.dentro
+                    ? `Tendência de fechar o ano dentro do orçamento (folga de ${brl(projecao.diff)}).`
+                    : `Tendência de estourar o orçamento anual em ${brl(-projecao.diff)}.`}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Projeção baseada na média mensal do ano até o mês selecionado.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        );
         return null;
       })}
+    </div>
+  );
+}
+
+function DeltaCard({ label, atual, anterior, inverse, percent }: { label: string; atual: number; anterior: number; inverse: boolean; percent?: boolean }) {
+  const diff = atual - anterior;
+  const pctChange = anterior !== 0 ? diff / Math.abs(anterior) : 0;
+  const up = diff > 0;
+  const neutral = diff === 0 || anterior === 0;
+  // inverse=true -> "up is good" (budget, saldo). inverse=false -> "up is bad" (gasto, %).
+  const good = neutral ? null : inverse ? up : !up;
+  const toneClass = neutral ? "text-muted-foreground" : good ? "text-emerald-600" : "text-destructive";
+  const Icon = neutral ? Minus : up ? ArrowUp : ArrowDown;
+  const fmt = (v: number) => (percent ? fmtPct(v) : brl(v));
+  return (
+    <Card className="rounded-2xl">
+      <CardContent className="pt-6">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className="mt-2 text-xl md:text-2xl font-bold truncate">{fmt(atual)}</p>
+        <div className={`mt-2 flex items-center gap-1 text-xs font-semibold ${toneClass}`}>
+          <Icon className="h-3 w-3" />
+          {neutral ? "sem variação" : `${(pctChange * 100).toFixed(1).replace(".", ",")}% vs. mês anterior`}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-border p-3">
+      <p className="text-xs uppercase text-muted-foreground font-medium">{label}</p>
+      <p className="mt-1 text-base font-bold">{value}</p>
     </div>
   );
 }
