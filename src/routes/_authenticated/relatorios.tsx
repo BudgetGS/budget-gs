@@ -155,6 +155,52 @@ function Relatorios() {
     [byUnidade],
   );
 
+  // Mapa de calor: unidades × meses (% de gasto)
+  const heatmap = useMemo(() => {
+    const months: string[] = [];
+    for (let m = 1; m <= 12; m++) months.push(`${year}-${String(m).padStart(2, "0")}-01`);
+    const uMap = new Map<string, { nome: string; cells: Record<string, number | null> }>();
+    filtered.forEach((r) => {
+      const k = r.mes.slice(0, 10);
+      const entry = uMap.get(r.unidade_id) ?? {
+        nome: r.unidades.nome,
+        cells: Object.fromEntries(months.map((m) => [m, null])),
+      };
+      const bud = considerarAcumulado ? Number(r.budget) : Number(r.unidades.budget_base);
+      entry.cells[k] = bud > 0 ? Number(r.gasto) / bud : null;
+      uMap.set(r.unidade_id, entry);
+    });
+    return { months, rows: Array.from(uMap.values()).sort((a, b) => a.nome.localeCompare(b.nome)) };
+  }, [filtered, year, considerarAcumulado]);
+
+  // Comparativo por responsável
+  const byResponsavel = useMemo(() => {
+    const supMap = new Map(sups.map((s) => [s.id, s.nome]));
+    const agg = new Map<string, { nome: string; budget: number; gasto: number }>();
+    filtered.forEach((r) => {
+      const key = r.unidades.supervisor_id ?? "__none";
+      const cur = agg.get(key) ?? {
+        nome: r.unidades.supervisor_id ? supMap.get(r.unidades.supervisor_id) ?? "—" : "Sem responsável",
+        budget: 0, gasto: 0,
+      };
+      cur.budget += considerarAcumulado ? Number(r.budget) : Number(r.unidades.budget_base);
+      cur.gasto += Number(r.gasto);
+      agg.set(key, cur);
+    });
+    return Array.from(agg.values())
+      .map((r) => ({ ...r, saldo: r.budget - r.gasto, pctVal: pct(r.gasto, r.budget) }))
+      .sort((a, b) => (b.pctVal ?? 0) - (a.pctVal ?? 0));
+  }, [filtered, sups, considerarAcumulado]);
+
+  // Tendência acumulada — saldo acumulado mês a mês
+  const tendencia = useMemo(() => {
+    let acc = 0;
+    return monthly.map((m) => {
+      acc += m.budget - m.gasto;
+      return { label: m.label, saldo: acc };
+    });
+  }, [monthly]);
+
   const orderedIds = widgets.filter((w) => w.enabled).map((w) => w.id);
 
   const exportCsv = () => {
@@ -171,6 +217,71 @@ function Relatorios() {
     a.href = URL.createObjectURL(blob);
     a.download = `relatorio-${year}.csv`;
     a.click();
+  };
+
+  const exportPdf = async () => {
+    const { jsPDF } = await import("jspdf");
+    const autoTable = (await import("jspdf-autotable")).default;
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Capa
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, pageWidth, 120, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(26);
+    doc.text("GS", 40, 60);
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text("Controle de Budget", 40, 82);
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Relatório anual — ${year}`, 40, 160);
+
+    // Resumo executivo
+    doc.setTextColor(30, 41, 59);
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    const totBudget = byUnidade.reduce((s, u) => s + u.budget, 0);
+    const totGasto = byUnidade.reduce((s, u) => s + u.gasto, 0);
+    const totSaldo = totBudget - totGasto;
+    const totPct = pct(totGasto, totBudget) ?? 0;
+    const resumo = [
+      `Período: ${year}`,
+      `Budget total: ${brl(totBudget)}`,
+      `Gasto total: ${brl(totGasto)}`,
+      `Saldo: ${brl(totSaldo)}`,
+      `% Gasto: ${fmtPct(totPct)}`,
+      `Unidades acima de 100%: ${estouros.length}`,
+    ];
+    doc.text(resumo, 40, 200);
+
+    // Tabela acumulada por unidade
+    autoTable(doc, {
+      startY: 320,
+      head: [["Unidade", "Budget", "Gasto", "Saldo", "%"]],
+      body: byUnidade.map((u) => [u.nome, brl(u.budget), brl(u.gasto), brl(u.saldo), fmtPct(u.pctVal)]),
+      headStyles: { fillColor: [15, 23, 42], textColor: 255 },
+      styles: { fontSize: 9, cellPadding: 6 },
+      theme: "grid",
+    });
+
+    // Página 2: Budget x Gasto mensal
+    doc.addPage();
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Budget x Gasto — ${year}`, 40, 50);
+    autoTable(doc, {
+      startY: 80,
+      head: [["Mês", "Budget", "Gasto", "Saldo"]],
+      body: monthly.map((m) => [m.label, brl(m.budget), brl(m.gasto), brl(m.budget - m.gasto)]),
+      headStyles: { fillColor: [15, 23, 42], textColor: 255 },
+      styles: { fontSize: 10, cellPadding: 6 },
+      theme: "grid",
+    });
+
+    doc.save(`relatorio-${year}.pdf`);
   };
 
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
