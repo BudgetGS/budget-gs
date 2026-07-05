@@ -491,8 +491,123 @@ function Relatorios() {
             </CardContent>
           </Card>
         );
+        if (id === "mapa-calor") return (
+          <Card key={id} className="rounded-2xl overflow-hidden">
+            <CardHeader><CardTitle>Mapa de calor — {year}</CardTitle></CardHeader>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/60">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-semibold">Unidade</th>
+                    {heatmap.months.map((m) => (
+                      <th key={m} className="px-2 py-2 text-center font-semibold capitalize">{monthLabel(m).slice(0, 3)}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {heatmap.rows.map((row) => (
+                    <tr key={row.nome} className="border-t border-border/60">
+                      <td className="px-3 py-2 font-medium whitespace-nowrap">{row.nome}</td>
+                      {heatmap.months.map((m) => {
+                        const v = row.cells[m];
+                        const style = v == null
+                          ? { backgroundColor: "transparent", color: "var(--color-muted-foreground)" }
+                          : heatColor(v);
+                        return (
+                          <td key={m} className="px-2 py-2 text-center" style={style}>
+                            {v == null ? "—" : fmtPct(v)}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                  {heatmap.rows.length === 0 && (
+                    <tr><td colSpan={13} className="text-center py-8 text-muted-foreground">Sem dados no período.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        );
+        if (id === "por-responsavel") return (
+          <Card key={id} className="rounded-2xl overflow-hidden">
+            <CardHeader><CardTitle>Comparativo por responsável — {year}</CardTitle></CardHeader>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/60">
+                  <tr className="text-left">
+                    <th className="px-4 py-3 font-semibold">Responsável</th>
+                    <th className="px-4 py-3 font-semibold text-right">Budget</th>
+                    <th className="px-4 py-3 font-semibold text-right">Gasto</th>
+                    <th className="px-4 py-3 font-semibold text-right">Saldo</th>
+                    <th className="px-4 py-3 font-semibold text-right">%</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {byResponsavel.map((r) => (
+                    <tr key={r.nome} className="border-t border-border/60">
+                      <td className="px-4 py-2 font-medium">{r.nome}</td>
+                      <td className="px-4 py-2 text-right">{brl(r.budget)}</td>
+                      <td className="px-4 py-2 text-right">{brl(r.gasto)}</td>
+                      <td className={`px-4 py-2 text-right ${r.saldo < 0 ? "text-destructive" : ""}`}>{brl(r.saldo)}</td>
+                      <td className="px-4 py-2 text-right">
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${saldoBadgeBg(r.pctVal)}`}>{fmtPct(r.pctVal)}</span>
+                      </td>
+                    </tr>
+                  ))}
+                  {byResponsavel.length === 0 && (
+                    <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">Sem dados no período.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        );
+        if (id === "tendencia-acumulada") return (
+          <Card key={id} className="rounded-2xl">
+            <CardHeader><CardTitle>Tendência acumulada — saldo mês a mês</CardTitle></CardHeader>
+            <CardContent>
+              <div className="h-72">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={tendencia}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                    <XAxis dataKey="label" fontSize={11} />
+                    <YAxis fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                    <Tooltip formatter={(v: number) => brl(v)} contentStyle={{ borderRadius: 12 }} />
+                    <ReferenceLine y={0} stroke="var(--color-muted-foreground)" strokeDasharray="4 4" />
+                    <Line type="monotone" dataKey="saldo" name="Saldo acumulado" stroke="var(--color-primary)" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        );
+        if (id === "export-pdf") return (
+          <Card key={id} className="rounded-2xl">
+            <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-4 w-4" /> Relatório em PDF</CardTitle></CardHeader>
+            <CardContent className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <p className="text-sm text-muted-foreground">
+                Gera um PDF formatado para apresentação: capa, resumo executivo, tabela por unidade e evolução mensal.
+              </p>
+              <Button className="rounded-xl" onClick={exportPdf}><FileText className="h-4 w-4" /> Exportar PDF</Button>
+            </CardContent>
+          </Card>
+        );
         return null;
       })}
     </div>
   );
+}
+
+// Interpola verde → amarelo → vermelho segundo o % de gasto.
+function heatColor(p: number): { backgroundColor: string; color: string } {
+  const clamped = Math.max(0, Math.min(1.3, p));
+  // 0.0 → verde (140,60), 0.7 → amarelo (50,80), 1.0+ → vermelho (0,70)
+  let h: number;
+  if (clamped <= 0.7) h = 140 - (clamped / 0.7) * 90;   // 140 → 50
+  else if (clamped <= 1) h = 50 - ((clamped - 0.7) / 0.3) * 50; // 50 → 0
+  else h = 0;
+  const l = clamped >= 1 ? 55 : 78;
+  const textColor = clamped >= 1 ? "#fff" : "#111";
+  return { backgroundColor: `hsl(${h}, 70%, ${l}%)`, color: textColor };
 }
