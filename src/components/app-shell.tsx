@@ -86,9 +86,16 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
         <div className="p-4 border-t border-border">
           <div className="mb-3">
-            <p className="text-xs text-muted-foreground">{profile?.email}</p>
-            <p className="text-sm font-semibold capitalize">{role}</p>
+            <p className="text-sm font-semibold truncate">{profile?.nome ?? "—"}</p>
+            <p className="text-xs text-muted-foreground truncate">{profile?.email}</p>
+            <p className="text-xs font-semibold capitalize text-muted-foreground mt-0.5">{role}</p>
           </div>
+          <Link
+            to="/minha-conta"
+            className="mb-2 flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm font-medium hover:bg-accent"
+          >
+            <UserCircle className="h-4 w-4" /> Minha conta
+          </Link>
           <Button variant="outline" size="sm" className="w-full rounded-xl" onClick={handleSignOut}>
             <LogOut className="h-4 w-4" /> Sair
           </Button>
