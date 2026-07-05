@@ -72,6 +72,17 @@ export const deleteUser = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     if (data.user_id === context.userId) throw new Error("Não é possível excluir a si mesmo");
     const supabaseAdmin = await assertAdmin(context.userId);
+    // Bloqueia exclusão quando existir histórico de lançamentos vinculado.
+    const { count, error: cErr } = await supabaseAdmin
+      .from("lancamentos")
+      .select("id", { count: "exact", head: true })
+      .eq("lancado_por", data.user_id);
+    if (cErr) throw new Error(cErr.message);
+    if ((count ?? 0) > 0) {
+      throw new Error(
+        `Este usuário possui ${count} lançamento(s) registrado(s) e não pode ser excluído. Desative-o para manter o histórico.`,
+      );
+    }
     const { error } = await supabaseAdmin.auth.admin.deleteUser(data.user_id);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -113,6 +124,7 @@ export const setUserActive = createServerFn({ method: "POST" })
       ban_duration: data.ativo ? "none" : "876000h",
     });
     if (error) throw new Error(error.message);
+    await supabaseAdmin.from("profiles").update({ ativo: data.ativo }).eq("id", data.user_id);
     return { ok: true };
   });
 
