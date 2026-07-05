@@ -29,6 +29,9 @@ const DASHBOARD_WIDGETS: WidgetDef[] = [
   { id: "estouradas", label: "Alerta: unidades acima de 100%" },
   { id: "chart", label: "Gráfico de distribuição por unidade" },
   { id: "ai", label: "Análise de IA" },
+  { id: "resumo-exec", label: "Resumo executivo (vs. mês anterior)", defaultEnabled: false },
+  { id: "saude-unidades", label: "Saúde por unidade (badges)", defaultEnabled: false },
+  { id: "projecao-ano", label: "Projeção de fechamento do ano", defaultEnabled: false },
 ];
 
 const RELATORIOS_WIDGETS: WidgetDef[] = [
@@ -37,6 +40,10 @@ const RELATORIOS_WIDGETS: WidgetDef[] = [
   { id: "evolucao-dupla", label: "Evolução mensal — acumulado vs fixo (lado a lado)" },
   { id: "acumulado-tabela", label: "Acumulado por unidade (tabela)" },
   { id: "ranking-estouros", label: "Ranking de estouros" },
+  { id: "mapa-calor", label: "Mapa de calor (unidades × meses)", defaultEnabled: false },
+  { id: "por-responsavel", label: "Comparativo por responsável", defaultEnabled: false },
+  { id: "tendencia-acumulada", label: "Tendência acumulada (saldo mês a mês)", defaultEnabled: false },
+  { id: "export-pdf", label: "Exportar relatório em PDF", defaultEnabled: false },
 ];
 
 function ConfiguracoesPage() {
@@ -318,7 +325,7 @@ function WidgetsTab({ scope, defs, title }: { scope: string; defs: WidgetDef[]; 
 
   const move = (idx: number, dir: -1 | 1) => save(moveItem(state, idx, dir));
 
-  const resetAll = () => save(defs.map((d) => ({ id: d.id, enabled: true })));
+  const resetAll = () => save(defs.map((d) => ({ id: d.id, enabled: d.defaultEnabled ?? true })));
 
   return (
     <Card className="rounded-2xl">
