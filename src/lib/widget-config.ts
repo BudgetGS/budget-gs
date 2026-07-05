@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export type WidgetDef = { id: string; label: string };
+export type WidgetDef = { id: string; label: string; defaultEnabled?: boolean };
 export type WidgetState = { id: string; enabled: boolean };
 
 const KEY = (scope: string) => `wcfg:${scope}`;
@@ -14,7 +14,7 @@ export function normalize(defs: WidgetDef[], stored: WidgetState[] | null): Widg
   });
   // append new defs
   defs.forEach((d) => {
-    if (!map.has(d.id)) ordered.push({ id: d.id, enabled: true });
+    if (!map.has(d.id)) ordered.push({ id: d.id, enabled: d.defaultEnabled ?? true });
   });
   return ordered;
 }
