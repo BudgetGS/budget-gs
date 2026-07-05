@@ -11,8 +11,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { fetchSupervisores, type Supervisor } from "@/lib/supervisores";
 import { brl, fmtPct, monthLabel, pct, saldoBadgeBg } from "@/lib/format";
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend, LineChart, Line, CartesianGrid } from "recharts";
-import { Download, Building2 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend, LineChart, Line, CartesianGrid, ReferenceLine } from "recharts";
+import { Download, Building2, FileText } from "lucide-react";
 import { useWidgetConfig } from "@/lib/widget-config";
 
 const RELATORIOS_WIDGETS = [
@@ -21,6 +21,10 @@ const RELATORIOS_WIDGETS = [
   { id: "evolucao-dupla", label: "Evolução mensal — acumulado vs fixo" },
   { id: "acumulado-tabela", label: "Acumulado por unidade (tabela)" },
   { id: "ranking-estouros", label: "Ranking de estouros" },
+  { id: "mapa-calor", label: "Mapa de calor", defaultEnabled: false },
+  { id: "por-responsavel", label: "Comparativo por responsável", defaultEnabled: false },
+  { id: "tendencia-acumulada", label: "Tendência acumulada", defaultEnabled: false },
+  { id: "export-pdf", label: "Exportar PDF", defaultEnabled: false },
 ];
 
 export const Route = createFileRoute("/_authenticated/relatorios")({
