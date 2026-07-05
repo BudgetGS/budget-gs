@@ -12,8 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Plus, Trash2, Building2, ArrowUp, ArrowDown, Shield } from "lucide-react";
-import { createUser, updateUserRole, deleteUser } from "@/lib/admin.functions";
+import { Plus, Trash2, Building2, ArrowUp, ArrowDown, Shield, Power, PowerOff } from "lucide-react";
+import { createUser, updateUserRole, deleteUser, setUserActive } from "@/lib/admin.functions";
 import {
   moveItem,
   useWidgetConfig,
@@ -75,12 +75,13 @@ function ConfiguracoesPage() {
 
 /* ------------------------ Users tab ------------------------ */
 
-type UserRow = { id: string; nome: string; email: string; role: string; unidades: number };
+type UserRow = { id: string; nome: string; email: string; role: string; unidades: number; ativo: boolean; lancamentos: number };
 
 function UsersTab() {
   const createFn = useServerFn(createUser);
   const updateRoleFn = useServerFn(updateUserRole);
   const deleteFn = useServerFn(deleteUser);
+  const setActiveFn = useServerFn(setUserActive);
 
   const [users, setUsers] = useState<UserRow[]>([]);
   const [unidades, setUnidades] = useState<{ id: string; nome: string; supervisor_id: string | null }[]>([]);
@@ -88,21 +89,29 @@ function UsersTab() {
   const [manageOpen, setManageOpen] = useState<UserRow | null>(null);
   const [form, setForm] = useState({ nome: "", email: "", password: "", role: "supervisor" as const });
   const [busy, setBusy] = useState(false);
+  const [hideInactive, setHideInactive] = useState(true);
 
   useEffect(() => { load(); }, []);
 
   const load = async () => {
-    const [{ data: profiles }, { data: roles }, { data: uns }] = await Promise.all([
-      supabase.from("profiles").select("id, nome, email"),
+    const [{ data: profiles }, { data: roles }, { data: uns }, { data: lanc }] = await Promise.all([
+      supabase.from("profiles").select("id, nome, email, ativo"),
       supabase.from("user_roles").select("user_id, role"),
       supabase.from("unidades").select("id, nome, supervisor_id"),
+      supabase.from("lancamentos").select("lancado_por"),
     ]);
     const rMap = new Map<string, string>((roles ?? []).map((r) => [r.user_id, r.role]));
     const cntMap = new Map<string, number>();
     (uns ?? []).forEach((u) => { if (u.supervisor_id) cntMap.set(u.supervisor_id, (cntMap.get(u.supervisor_id) ?? 0) + 1); });
-    setUsers((profiles ?? []).map((p) => ({
+    const lancMap = new Map<string, number>();
+    (lanc ?? []).forEach((l: any) => {
+      if (l.lancado_por) lancMap.set(l.lancado_por, (lancMap.get(l.lancado_por) ?? 0) + 1);
+    });
+    setUsers((profiles ?? []).map((p: any) => ({
       id: p.id, nome: p.nome, email: p.email,
       role: rMap.get(p.id) ?? "—", unidades: cntMap.get(p.id) ?? 0,
+      ativo: p.ativo !== false,
+      lancamentos: lancMap.get(p.id) ?? 0,
     })).sort((a, b) => a.nome.localeCompare(b.nome)));
     setUnidades((uns ?? []) as any);
   };
@@ -124,9 +133,17 @@ function UsersTab() {
   };
 
   const remove = async (id: string) => {
-    if (!confirm("Excluir esse usuário?")) return;
+    if (!confirm("Excluir esse usuário definitivamente? Essa ação é irreversível.")) return;
     try { await deleteFn({ data: { user_id: id } }); toast.success("Excluído"); load(); }
     catch (e: any) { toast.error(e.message); }
+  };
+
+  const toggleActive = async (id: string, ativo: boolean) => {
+    try {
+      await setActiveFn({ data: { user_id: id, ativo } });
+      toast.success(ativo ? "Usuário reativado" : "Usuário desativado");
+      load();
+    } catch (e: any) { toast.error(e.message); }
   };
 
   const linkUnidade = async (unidadeId: string, supervisorId: string | null) => {
@@ -135,6 +152,8 @@ function UsersTab() {
     toast.success("Atualizado");
     load();
   };
+
+  const visibleUsers = hideInactive ? users.filter((u) => u.ativo) : users;
 
   return (
     <div className="space-y-4">
@@ -151,6 +170,14 @@ function UsersTab() {
         <Button className="rounded-xl" onClick={() => setOpen(true)}><Plus className="h-4 w-4" />Novo usuário</Button>
       </div>
 
+      <div className="flex items-center gap-2">
+        <Checkbox id="hide-inactive" checked={hideInactive} onCheckedChange={(v) => setHideInactive(!!v)} />
+        <Label htmlFor="hide-inactive" className="text-sm cursor-pointer">
+          Ocultar usuários desativados
+          <span className="text-muted-foreground ml-1">({users.filter((u) => !u.ativo).length} inativo{users.filter((u) => !u.ativo).length === 1 ? "" : "s"})</span>
+        </Label>
+      </div>
+
       <Card className="rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -160,13 +187,20 @@ function UsersTab() {
                 <th className="px-4 py-3 font-semibold">E-mail</th>
                 <th className="px-4 py-3 font-semibold">Papel</th>
                 <th className="px-4 py-3 font-semibold text-center">Unidades</th>
-                <th className="px-4 py-3"></th>
+                <th className="px-4 py-3 text-right">Ações</th>
               </tr>
             </thead>
             <tbody>
-              {users.map((u) => (
-                <tr key={u.id} className="border-t border-border/60">
-                  <td className="px-4 py-3 font-medium">{u.nome}</td>
+              {visibleUsers.map((u) => (
+                <tr key={u.id} className={`border-t border-border/60 ${!u.ativo ? "opacity-60" : ""}`}>
+                  <td className="px-4 py-3 font-medium">
+                    <div className="flex items-center gap-2">
+                      <span>{u.nome}</span>
+                      {!u.ativo && (
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">Inativo</span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
                   <td className="px-4 py-3">
                     <Select value={u.role} onValueChange={(v) => changeRole(u.id, v)}>
@@ -186,12 +220,34 @@ function UsersTab() {
                     ) : "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Button variant="ghost" size="sm" onClick={() => remove(u.id)} className="text-destructive">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      {u.ativo ? (
+                        <Button variant="ghost" size="sm" onClick={() => toggleActive(u.id, false)} title="Desativar">
+                          <PowerOff className="h-4 w-4" /> Desativar
+                        </Button>
+                      ) : (
+                        <Button variant="ghost" size="sm" onClick={() => toggleActive(u.id, true)} title="Reativar">
+                          <Power className="h-4 w-4" /> Reativar
+                        </Button>
+                      )}
+                      {u.lancamentos === 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => remove(u.id)}
+                          className="text-destructive"
+                          title="Excluir definitivamente"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
+              {visibleUsers.length === 0 && (
+                <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">Nenhum usuário para exibir.</td></tr>
+              )}
             </tbody>
           </table>
         </div>
