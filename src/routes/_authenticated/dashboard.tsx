@@ -225,7 +225,7 @@ function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
-                {estouradas.map((r) => (
+                {[...estouradas].sort((a, b) => (Number(b.gasto) / b.budgetEff) - (Number(a.gasto) / a.budgetEff)).map((r) => (
                   <span key={r.unidade_id} className="rounded-full bg-destructive/15 text-destructive px-3 py-1 text-xs font-semibold">
                     {r.unidades.nome} — {fmtPct(Number(r.gasto) / r.budgetEff)}
                   </span>
