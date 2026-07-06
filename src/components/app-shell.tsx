@@ -24,7 +24,6 @@ const NAV: NavItem[] = [
   { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
   { to: "/unidades", label: "Unidades", icon: Building2, roles: ["admin", "gerente"] },
   { to: "/configuracoes", label: "Configurações", icon: Settings, roles: ["admin"] },
-  { to: "/minha-conta", label: "Minha Conta", icon: UserCircle },
 ];
 
 function Greeting({ name }: { name: string }) {
