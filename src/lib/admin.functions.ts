@@ -120,11 +120,11 @@ export const setUserActive = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     if (data.user_id === context.userId) throw new Error("Não é possível desativar a si mesmo");
     const supabaseAdmin = await assertAdmin(context.userId);
-    const { error } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, {
-      ban_duration: data.ativo ? "none" : "876000h",
-    });
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .update({ ativo: data.ativo })
+      .eq("id", data.user_id);
     if (error) throw new Error(error.message);
-    await supabaseAdmin.from("profiles").update({ ativo: data.ativo }).eq("id", data.user_id);
     return { ok: true };
   });
 
