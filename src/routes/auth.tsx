@@ -28,8 +28,6 @@ function AuthPage() {
     }
   }, [loading, session, navigate, redirect]);
 
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -44,23 +42,6 @@ function AuthPage() {
     setBusy(false);
     if (error) return toast.error("Não foi possível entrar", { description: error.message });
     toast.success("Bem-vindo!");
-  };
-
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: window.location.origin,
-        data: { nome },
-      },
-    });
-    setBusy(false);
-    if (error) return toast.error("Erro no cadastro", { description: error.message });
-    toast.success("Cadastro criado! Você já pode entrar.");
-    setMode("signin");
   };
 
   const handleForgot = async (e: React.FormEvent) => {
@@ -98,13 +79,7 @@ function AuthPage() {
             <CardDescription>Use seu e-mail corporativo</CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs value={mode} onValueChange={(v) => setMode(v as any)}>
-              <TabsList className="grid grid-cols-2 w-full">
-                <TabsTrigger value="signin">Entrar</TabsTrigger>
-                <TabsTrigger value="signup">Criar conta</TabsTrigger>
-              </TabsList>
-              <TabsContent value="signin">
-                <form onSubmit={handleSignIn} className="space-y-4 mt-4">
+            <form onSubmit={handleSignIn} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="email">E-mail</Label>
                     <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -123,31 +98,7 @@ function AuthPage() {
                   >
                     Esqueci minha senha
                   </button>
-                </form>
-              </TabsContent>
-              <TabsContent value="signup">
-                <form onSubmit={handleSignUp} className="space-y-4 mt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="nome">Nome (ex: Equipe Gabriel)</Label>
-                    <Input id="nome" required value={nome} onChange={(e) => setNome(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email2">E-mail</Label>
-                    <Input id="email2" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password2">Senha</Label>
-                    <Input id="password2" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={busy}>
-                    {busy ? "Criando..." : "Criar conta"}
-                  </Button>
-                  <p className="text-xs text-muted-foreground text-center">
-                    O primeiro usuário criado se torna administrador.
-                  </p>
-                </form>
-              </TabsContent>
-            </Tabs>
+            </form>
           </CardContent>
         </Card>
 
