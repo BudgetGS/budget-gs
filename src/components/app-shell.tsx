@@ -53,8 +53,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-muted/30 flex">
       {/* Sidebar - desktop */}
-      <aside className="hidden md:flex md:w-64 flex-col border-r border-border bg-sidebar">
-        <div className="px-6 py-6 border-b border-border">
+      <aside className="hidden md:flex md:w-64 flex-col border-r border-border bg-sidebar sticky top-0 h-screen">
+        <div className="px-6 py-6 border-b border-border shrink-0">
           <div className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-1.5 text-primary-foreground font-bold tracking-tight">
             <span className="h-1.5 w-1.5 rounded-full bg-secondary" />
             GS
@@ -63,7 +63,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             Controle de Budget
           </p>
         </div>
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1">
           {items.map((n) => {
             const active = pathname === n.to || (n.to !== "/dashboard" && pathname.startsWith(n.to));
             return (
@@ -83,7 +83,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
-        <div className="p-4 border-t border-border">
+        <div className="p-4 border-t border-border shrink-0 bg-sidebar">
           <div className="mb-3">
             <p className="text-sm font-semibold truncate">{profile?.nome ?? "—"}</p>
             <p className="text-xs text-muted-foreground truncate">{profile?.email}</p>
