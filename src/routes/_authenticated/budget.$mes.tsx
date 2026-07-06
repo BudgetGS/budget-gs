@@ -280,8 +280,9 @@ function BudgetMes() {
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={6} className="text-center py-10 text-muted-foreground">Nenhum registro. Gere o mês em Unidades.</td></tr>
               ) : filtered.map((r) => {
-                const saldo = Number(r.budget) - Number(r.gasto);
-                const p = pct(Number(r.gasto), Number(r.budget));
+                const base = Number(considerarAcumulado ? r.budget : r.unidades.budget_base);
+                const saldo = base - Number(r.gasto);
+                const p = pct(Number(r.gasto), base);
                 return (
                   <tr key={r.id} className="border-t border-border/60">
                     <td className="px-4 py-3 font-medium">{r.unidades.nome}</td>
