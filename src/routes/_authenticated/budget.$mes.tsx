@@ -139,7 +139,7 @@ function BudgetMes() {
 
   const registrarLancamento = async (row: Budget, valor: number, descricao: string): Promise<void> => {
     if (!user?.id) return;
-    if (!Number.isFinite(valor) || valor <= 0) {
+    if (!Number.isFinite(valor) || valor === 0) {
       toast.error("Informe um valor válido");
       return;
     }
@@ -398,7 +398,7 @@ function LancarPopover({ onSave }: { onSave: (valor: number, descricao: string) 
 
   const submit = async () => {
     const n = parseFloat(valor);
-    if (Number.isNaN(n) || n <= 0) return;
+    if (Number.isNaN(n) || n === 0) return;
     setBusy(true);
     await onSave(n, descricao);
     setBusy(false);
