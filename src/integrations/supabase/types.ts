@@ -60,6 +60,13 @@ export type Database = {
             referencedRelation: "unidades"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "budgets_mensais_unidade_id_fkey"
+            columns: ["unidade_id"]
+            isOneToOne: false
+            referencedRelation: "unidades_selecao"
+            referencedColumns: ["id"]
+          },
         ]
       }
       lancamentos: {
@@ -120,6 +127,13 @@ export type Database = {
             columns: ["unidade_id"]
             isOneToOne: false
             referencedRelation: "unidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_unidade_id_fkey"
+            columns: ["unidade_id"]
+            isOneToOne: false
+            referencedRelation: "unidades_selecao"
             referencedColumns: ["id"]
           },
         ]
@@ -221,6 +235,24 @@ export type Database = {
       }
     }
     Views: {
+      unidades_selecao: {
+        Row: {
+          ativo: boolean | null
+          id: string | null
+          nome: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          id?: string | null
+          nome?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          id?: string | null
+          nome?: string | null
+        }
+        Relationships: []
+      }
       v_budgets: {
         Row: {
           atualizado_em: string | null
@@ -250,6 +282,13 @@ export type Database = {
             columns: ["unidade_id"]
             isOneToOne: false
             referencedRelation: "unidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budgets_mensais_unidade_id_fkey"
+            columns: ["unidade_id"]
+            isOneToOne: false
+            referencedRelation: "unidades_selecao"
             referencedColumns: ["id"]
           },
           {
