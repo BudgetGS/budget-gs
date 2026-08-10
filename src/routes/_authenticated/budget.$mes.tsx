@@ -45,6 +45,7 @@ function BudgetMes() {
   const [bulkValues, setBulkValues] = useState<Record<string, string>>({});
   const [savingBulk, setSavingBulk] = useState(false);
   const [considerarAcumulado, setConsiderarAcumulado] = useState(true);
+  const [unidadesSelecao, setUnidadesSelecao] = useState<{ id: string; nome: string }[]>([]);
 
   const load = async () => {
     setLoading(true);
