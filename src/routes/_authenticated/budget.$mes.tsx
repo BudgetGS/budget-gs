@@ -96,6 +96,12 @@ function BudgetMes() {
     return { budget, gasto, saldo: budget - gasto, pct: pct(gasto, budget) };
   }, [filtered, considerarAcumulado]);
 
+  const budgetMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    rows.forEach((r) => { m[r.unidade_id] = r.id; });
+    return m;
+  }, [rows]);
+
   const startBulkEdit = () => {
     const init: Record<string, string> = {};
     filtered.forEach((r) => { init[r.id] = String(Number(r.unidades.budget_base)); });
