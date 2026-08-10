@@ -317,7 +317,12 @@ function BudgetMes() {
                     <td className="px-4 py-3 text-right">
                       <div className="inline-flex items-center gap-2 justify-end">
                         <span>{brl(r.gasto)}</span>
-                        <LancarPopover onSave={(v, d) => registrarLancamento(r, v, d)} />
+                        <LancarPopover
+                          unidadeAtual={r.unidade_id}
+                          unidades={unidadesSelecao}
+                          budgetMap={budgetMap}
+                          onSave={(bmId, unId, v, d) => registrarLancamento(bmId, unId, v, d)}
+                        />
                       </div>
                     </td>
                     <td className={`px-4 py-3 text-right font-semibold ${saldo < 0 ? "text-destructive" : ""}`}>{brl(saldo)}</td>
