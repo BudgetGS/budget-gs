@@ -398,7 +398,7 @@ function LancarPopover({ onSave }: { onSave: (valor: number, descricao: string) 
 
   const submit = async () => {
     const n = parseFloat(valor);
-    if (Number.isNaN(n) || n <= 0) return;
+    if (Number.isNaN(n) || n === 0) return;
     setBusy(true);
     await onSave(n, descricao);
     setBusy(false);
