@@ -45,6 +45,7 @@ function BudgetMes() {
   const [bulkValues, setBulkValues] = useState<Record<string, string>>({});
   const [savingBulk, setSavingBulk] = useState(false);
   const [considerarAcumulado, setConsiderarAcumulado] = useState(true);
+  const [unidadesSelecao, setUnidadesSelecao] = useState<{ id: string; nome: string }[]>([]);
 
   const load = async () => {
     setLoading(true);
@@ -57,6 +58,8 @@ function BudgetMes() {
       a.unidades.nome.localeCompare(b.unidades.nome),
     );
     setRows(sorted);
+    const { data: us } = await supabase.from("unidades_selecao").select("id, nome");
+    setUnidadesSelecao((us as any) ?? []);
     if (!isSup && supervisores.length === 0) {
       setSupervisores(await fetchSupervisores());
     }
@@ -92,6 +95,12 @@ function BudgetMes() {
     const gasto = filtered.reduce((s, r) => s + Number(r.gasto), 0);
     return { budget, gasto, saldo: budget - gasto, pct: pct(gasto, budget) };
   }, [filtered, considerarAcumulado]);
+
+  const budgetMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    rows.forEach((r) => { m[r.unidade_id] = r.id; });
+    return m;
+  }, [rows]);
 
   const startBulkEdit = () => {
     const init: Record<string, string> = {};
@@ -137,15 +146,20 @@ function BudgetMes() {
     }
   };
 
-  const registrarLancamento = async (row: Budget, valor: number, descricao: string): Promise<void> => {
+  const registrarLancamento = async (
+    budget_mensal_id: string,
+    unidade_id: string,
+    valor: number,
+    descricao: string,
+  ): Promise<void> => {
     if (!user?.id) return;
     if (!Number.isFinite(valor) || valor === 0) {
       toast.error("Informe um valor válido");
       return;
     }
     const { error } = await supabase.from("lancamentos").insert({
-      unidade_id: row.unidade_id,
-      budget_mensal_id: row.id,
+      unidade_id,
+      budget_mensal_id,
       valor,
       descricao: descricao || null,
       data_gasto: new Date().toISOString().slice(0, 10),
@@ -303,7 +317,12 @@ function BudgetMes() {
                     <td className="px-4 py-3 text-right">
                       <div className="inline-flex items-center gap-2 justify-end">
                         <span>{brl(r.gasto)}</span>
-                        <LancarPopover onSave={(v, d) => registrarLancamento(r, v, d)} />
+                        <LancarPopover
+                          unidadeAtual={r.unidade_id}
+                          unidades={unidadesSelecao}
+                          budgetMap={budgetMap}
+                          onSave={(bmId, unId, v, d) => registrarLancamento(bmId, unId, v, d)}
+                        />
                       </div>
                     </td>
                     <td className={`px-4 py-3 text-right font-semibold ${saldo < 0 ? "text-destructive" : ""}`}>{brl(saldo)}</td>
@@ -391,17 +410,37 @@ function Totalizer({ label, value, tone }: { label: string; value: string; tone?
   );
 }
 
-function LancarPopover({ onSave }: { onSave: (valor: number, descricao: string) => Promise<void> | void }) {
+function LancarPopover({
+  unidadeAtual,
+  unidades,
+  budgetMap,
+  onSave,
+}: {
+  unidadeAtual: string;
+  unidades: { id: string; nome: string }[];
+  budgetMap: Record<string, string>;
+  onSave: (budget_mensal_id: string, unidade_id: string, valor: number, descricao: string) => Promise<void> | void;
+}) {
   const [open, setOpen] = useState(false);
+  const [unidadeId, setUnidadeId] = useState(unidadeAtual);
   const [valor, setValor] = useState("");
   const [descricao, setDescricao] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const opcoes = useMemo(
+    () => unidades.filter((u) => budgetMap[u.id]).sort((a, b) => a.nome.localeCompare(b.nome)),
+    [unidades, budgetMap],
+  );
+
+  useEffect(() => { setUnidadeId(unidadeAtual); }, [unidadeAtual]);
+
   const submit = async () => {
     const n = parseFloat(valor);
     if (Number.isNaN(n) || n === 0) return;
+    const bmId = budgetMap[unidadeId];
+    if (!bmId) return;
     setBusy(true);
-    await onSave(n, descricao);
+    await onSave(bmId, unidadeId, n, descricao);
     setBusy(false);
     setValor("");
     setDescricao("");
@@ -421,9 +460,19 @@ function LancarPopover({ onSave }: { onSave: (valor: number, descricao: string) 
       </PopoverTrigger>
       <PopoverContent align="end" className="w-64 space-y-3">
         <div className="space-y-1">
+          <label className="text-xs font-semibold text-muted-foreground">Unidade</label>
+          <Select value={unidadeId} onValueChange={setUnidadeId}>
+            <SelectTrigger className="rounded-lg"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {opcoes.map((u) => (
+                <SelectItem key={u.id} value={u.id}>{u.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
           <label className="text-xs font-semibold text-muted-foreground">Valor (R$)</label>
           <Input
-            autoFocus
             type="number"
             step="0.01"
             inputMode="decimal"
