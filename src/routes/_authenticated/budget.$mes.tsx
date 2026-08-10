@@ -410,17 +410,37 @@ function Totalizer({ label, value, tone }: { label: string; value: string; tone?
   );
 }
 
-function LancarPopover({ onSave }: { onSave: (valor: number, descricao: string) => Promise<void> | void }) {
+function LancarPopover({
+  unidadeAtual,
+  unidades,
+  budgetMap,
+  onSave,
+}: {
+  unidadeAtual: string;
+  unidades: { id: string; nome: string }[];
+  budgetMap: Record<string, string>;
+  onSave: (budget_mensal_id: string, unidade_id: string, valor: number, descricao: string) => Promise<void> | void;
+}) {
   const [open, setOpen] = useState(false);
+  const [unidadeId, setUnidadeId] = useState(unidadeAtual);
   const [valor, setValor] = useState("");
   const [descricao, setDescricao] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const opcoes = useMemo(
+    () => unidades.filter((u) => budgetMap[u.id]).sort((a, b) => a.nome.localeCompare(b.nome)),
+    [unidades, budgetMap],
+  );
+
+  useEffect(() => { setUnidadeId(unidadeAtual); }, [unidadeAtual]);
+
   const submit = async () => {
     const n = parseFloat(valor);
     if (Number.isNaN(n) || n === 0) return;
+    const bmId = budgetMap[unidadeId];
+    if (!bmId) return;
     setBusy(true);
-    await onSave(n, descricao);
+    await onSave(bmId, unidadeId, n, descricao);
     setBusy(false);
     setValor("");
     setDescricao("");
@@ -440,9 +460,19 @@ function LancarPopover({ onSave }: { onSave: (valor: number, descricao: string) 
       </PopoverTrigger>
       <PopoverContent align="end" className="w-64 space-y-3">
         <div className="space-y-1">
+          <label className="text-xs font-semibold text-muted-foreground">Unidade</label>
+          <Select value={unidadeId} onValueChange={setUnidadeId}>
+            <SelectTrigger className="rounded-lg"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {opcoes.map((u) => (
+                <SelectItem key={u.id} value={u.id}>{u.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
           <label className="text-xs font-semibold text-muted-foreground">Valor (R$)</label>
           <Input
-            autoFocus
             type="number"
             step="0.01"
             inputMode="decimal"
