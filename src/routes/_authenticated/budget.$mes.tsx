@@ -58,6 +58,8 @@ function BudgetMes() {
       a.unidades.nome.localeCompare(b.unidades.nome),
     );
     setRows(sorted);
+    const { data: us } = await supabase.from("unidades_selecao").select("id, nome");
+    setUnidadesSelecao((us as any) ?? []);
     if (!isSup && supervisores.length === 0) {
       setSupervisores(await fetchSupervisores());
     }
