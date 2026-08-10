@@ -139,7 +139,7 @@ function BudgetMes() {
 
   const registrarLancamento = async (row: Budget, valor: number, descricao: string): Promise<void> => {
     if (!user?.id) return;
-    if (!Number.isFinite(valor) || valor <= 0) {
+    if (!Number.isFinite(valor) || valor === 0) {
       toast.error("Informe um valor válido");
       return;
     }
