@@ -146,15 +146,20 @@ function BudgetMes() {
     }
   };
 
-  const registrarLancamento = async (row: Budget, valor: number, descricao: string): Promise<void> => {
+  const registrarLancamento = async (
+    budget_mensal_id: string,
+    unidade_id: string,
+    valor: number,
+    descricao: string,
+  ): Promise<void> => {
     if (!user?.id) return;
     if (!Number.isFinite(valor) || valor === 0) {
       toast.error("Informe um valor válido");
       return;
     }
     const { error } = await supabase.from("lancamentos").insert({
-      unidade_id: row.unidade_id,
-      budget_mensal_id: row.id,
+      unidade_id,
+      budget_mensal_id,
       valor,
       descricao: descricao || null,
       data_gasto: new Date().toISOString().slice(0, 10),
