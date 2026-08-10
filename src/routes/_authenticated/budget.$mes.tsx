@@ -351,10 +351,11 @@ function BudgetMes() {
                     <td className="px-4 py-2 font-medium sticky left-0 bg-background">{u}</td>
                     {compareMeses.map((m) => {
                       const r = compareData[m]?.find((x) => x.unidades.nome === u);
-                      const p = r ? pct(Number(r.gasto), Number(r.budget)) : null;
+                      const base = r ? Number(considerarAcumulado ? r.budget : r.unidades.budget_base) : 0;
+                      const p = r ? pct(Number(r.gasto), base) : null;
                       return (
                         <Fragment key={m + u}>
-                          <td className="px-3 py-2 text-right border-l">{r ? brl(r.budget) : "—"}</td>
+                          <td className="px-3 py-2 text-right border-l">{r ? brl(considerarAcumulado ? r.budget : r.unidades.budget_base) : "—"}</td>
                           <td className="px-3 py-2 text-right">{r ? brl(r.gasto) : "—"}</td>
                           <td className="px-3 py-2 text-right">
                             <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${saldoBadgeBg(p)}`}>{fmtPct(p)}</span>
