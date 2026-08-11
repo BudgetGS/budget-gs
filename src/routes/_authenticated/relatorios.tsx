@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { fetchSupervisores, type Supervisor } from "@/lib/supervisores";
-import { brl, fmtPct, monthLabel, pct, saldoBadgeBg } from "@/lib/format";
+import { brl, fmtPct, monthLabel, negCls, pct, saldoBadgeBg } from "@/lib/format";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend, LineChart, Line, CartesianGrid, ReferenceLine } from "recharts";
 import { Download, Building2, FileText } from "lucide-react";
 import { useWidgetConfig } from "@/lib/widget-config";
@@ -134,7 +134,9 @@ function Relatorios() {
     });
     return Array.from(map.values()).map((x) => {
       const acumulado = x.budgetTotalAcum - x.budgetFixoAcum;
-      const budget = considerarAcumulado ? x.budgetTotalAcum : x.budgetFixoAcum;
+      // Saldo do período = budget fixo total (budget_base × meses) − gasto total.
+      // Não somar budgets_mensais.budget através dos meses (duplicaria o rollover).
+      const budget = x.budgetFixoAcum;
       const saldo = budget - x.gasto;
       return {
         nome: x.nome,
@@ -145,10 +147,14 @@ function Relatorios() {
         saldo,
         pctVal: pct(x.gasto, budget),
       };
-    }).sort((a, b) => (b.pctVal ?? 0) - (a.pctVal ?? 0));
-  }, [filtered, considerarAcumulado]);
+    }).sort((a, b) => b.budget - a.budget);
+  }, [filtered]);
 
-  const estouros = byUnidade.filter((u) => (u.pctVal ?? 0) > 1);
+  // Estouro = saldo negativo, ordenado do saldo mais negativo ao menos negativo.
+  const estouros = useMemo(
+    () => byUnidade.filter((u) => u.saldo < 0).sort((a, b) => a.saldo - b.saldo),
+    [byUnidade],
+  );
 
   const gastoPorUnidade = useMemo(
     () => byUnidade.map((u) => ({ nome: u.nome, gasto: u.gasto })).sort((a, b) => b.gasto - a.gasto),
@@ -204,13 +210,9 @@ function Relatorios() {
   const orderedIds = widgets.filter((w) => w.enabled).map((w) => w.id);
 
   const exportCsv = () => {
-    const header = considerarAcumulado
-      ? ["Unidade", "Budget fixo", "Saldo acumulado", "Budget total", "Gasto", "Saldo", "%"].join(",")
-      : ["Unidade", "Budget", "Gasto", "Saldo", "%"].join(",");
+    const header = ["Unidade", "Budget fixo", "Gasto", "Saldo", "%"].join(",");
     const lines = byUnidade.map((u) =>
-      considerarAcumulado
-        ? [u.nome, u.budgetFixo.toFixed(2), u.acumulado.toFixed(2), u.budget.toFixed(2), u.gasto.toFixed(2), u.saldo.toFixed(2), (u.pctVal ?? 0).toFixed(4)].join(",")
-        : [u.nome, u.budget.toFixed(2), u.gasto.toFixed(2), u.saldo.toFixed(2), (u.pctVal ?? 0).toFixed(4)].join(","),
+      [u.nome, u.budgetFixo.toFixed(2), u.gasto.toFixed(2), u.saldo.toFixed(2), (u.pctVal ?? 0).toFixed(4)].join(","),
     );
     const blob = new Blob([[header, ...lines].join("\n")], { type: "text/csv;charset=utf-8;" });
     const a = document.createElement("a");
