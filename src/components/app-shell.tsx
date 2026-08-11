@@ -12,9 +12,12 @@ import {
   X,
   UserCircle,
   History,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 
 type NavItem = { to: string; label: string; icon: any; roles?: string[] };
 const NAV: NavItem[] = [
@@ -25,6 +28,8 @@ const NAV: NavItem[] = [
   { to: "/unidades", label: "Unidades", icon: Building2, roles: ["admin", "gerente"] },
   { to: "/configuracoes", label: "Configurações", icon: Settings, roles: ["admin"] },
 ];
+
+const COLLAPSE_KEY = "gs:sidebar-collapsed";
 
 function Greeting({ name }: { name: string }) {
   const h = new Date().getHours();
@@ -42,6 +47,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(COLLAPSE_KEY) === "1";
+  });
+
+  useEffect(() => {
+    window.localStorage.setItem(COLLAPSE_KEY, collapsed ? "1" : "0");
+  }, [collapsed]);
 
   const items = NAV.filter((n) => !n.roles || (role && n.roles.includes(role)));
 
@@ -50,56 +63,115 @@ export function AppShell({ children }: { children: ReactNode }) {
     navigate({ to: "/auth", replace: true });
   };
 
+  const navLink = (n: NavItem) => {
+    const active = pathname === n.to || (n.to !== "/dashboard" && pathname.startsWith(n.to));
+    const inner = (
+      <Link
+        key={n.to}
+        to={n.to}
+        className={cn(
+          "flex items-center rounded-xl text-sm font-medium transition-colors",
+          collapsed ? "justify-center px-2 py-2.5 w-full" : "gap-3 px-3 py-2.5",
+          active ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-accent",
+        )}
+      >
+        <n.icon className="h-4 w-4 shrink-0" />
+        {!collapsed && <span>{n.label}</span>}
+      </Link>
+    );
+    if (!collapsed) return inner;
+    return (
+      <Tooltip key={n.to}>
+        <TooltipTrigger asChild>{inner}</TooltipTrigger>
+        <TooltipContent side="right" className="font-medium">{n.label}</TooltipContent>
+      </Tooltip>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-muted/30 flex">
       {/* Sidebar - desktop */}
-      <aside className="hidden md:flex md:w-64 flex-col border-r border-border bg-sidebar sticky top-0 h-screen">
-        <div className="px-6 py-6 border-b border-border shrink-0">
+      <TooltipProvider delayDuration={200}>
+      <aside
+        className={cn(
+          "hidden md:flex flex-col border-r border-border bg-sidebar sticky top-0 h-screen transition-[width] duration-200",
+          collapsed ? "md:w-16" : "md:w-64",
+        )}
+      >
+        <div className={cn("py-6 border-b border-border shrink-0", collapsed ? "px-2 flex justify-center" : "px-6")}>
           <div className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-1.5 text-primary-foreground font-bold tracking-tight">
             <span className="h-1.5 w-1.5 rounded-full bg-secondary" />
-            GS
+            {collapsed ? "G" : "GS"}
           </div>
-          <p className="mt-2 text-xs text-muted-foreground font-medium">
-            Controle de Budget
-          </p>
+          {!collapsed && (
+            <p className="mt-2 text-xs text-muted-foreground font-medium">Controle de Budget</p>
+          )}
         </div>
         <nav className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1">
-          {items.map((n) => {
-            const active = pathname === n.to || (n.to !== "/dashboard" && pathname.startsWith(n.to));
-            return (
-              <Link
-                key={n.to}
-                to={n.to}
-                className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                  active
-                    ? "bg-primary text-primary-foreground"
-                    : "text-foreground hover:bg-accent",
-                )}
-              >
-                <n.icon className="h-4 w-4" />
-                {n.label}
-              </Link>
-            );
-          })}
+          {items.map(navLink)}
         </nav>
-        <div className="p-4 border-t border-border shrink-0 bg-sidebar">
-          <div className="mb-3">
-            <p className="text-sm font-semibold truncate">{profile?.nome ?? "—"}</p>
-            <p className="text-xs text-muted-foreground truncate">{profile?.email}</p>
-            <p className="text-xs font-semibold capitalize text-muted-foreground mt-0.5">{role}</p>
-          </div>
-          <Link
-            to="/minha-conta"
-            className="mb-2 flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm font-medium hover:bg-accent"
+        <div className={cn("shrink-0 border-t border-border bg-sidebar", collapsed ? "p-2" : "p-4")}>
+          {!collapsed && (
+            <div className="mb-3">
+              <p className="text-sm font-semibold truncate">{profile?.nome ?? "—"}</p>
+              <p className="text-xs text-muted-foreground truncate">{profile?.email}</p>
+              <p className="text-xs font-semibold capitalize text-muted-foreground mt-0.5">{role}</p>
+            </div>
+          )}
+          {!collapsed && (
+            <Link
+              to="/minha-conta"
+              className="mb-2 flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm font-medium hover:bg-accent"
+            >
+              <UserCircle className="h-4 w-4" /> Minha conta
+            </Link>
+          )}
+          {collapsed && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  to="/minha-conta"
+                  className="flex items-center justify-center rounded-xl border border-border p-2.5 mb-2 hover:bg-accent"
+                >
+                  <UserCircle className="h-4 w-4" />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="font-medium">Minha conta</TooltipContent>
+            </Tooltip>
+          )}
+          {!collapsed && (
+            <Button variant="outline" size="sm" className="w-full rounded-xl mb-2" onClick={handleSignOut}>
+              <LogOut className="h-4 w-4" /> Sair
+            </Button>
+          )}
+          {collapsed && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="w-full rounded-xl mb-2"
+                  onClick={handleSignOut}
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="font-medium">Sair</TooltipContent>
+            </Tooltip>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn("w-full rounded-xl", collapsed && "px-2")}
+            onClick={() => setCollapsed((c) => !c)}
+            aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
           >
-            <UserCircle className="h-4 w-4" /> Minha conta
-          </Link>
-          <Button variant="outline" size="sm" className="w-full rounded-xl" onClick={handleSignOut}>
-            <LogOut className="h-4 w-4" /> Sair
+            {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+            {!collapsed && <span className="ml-2">Recolher</span>}
           </Button>
         </div>
       </aside>
+      </TooltipProvider>
 
       {/* Mobile sheet */}
       {open && (
