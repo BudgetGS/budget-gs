@@ -115,12 +115,14 @@ function Dashboard() {
     return { budget, gasto, saldo: budget - gasto, pct: pct(gasto, budget) };
   }, [withEffectiveBudget]);
 
-  const chartData = withEffectiveBudget.map((r) => ({
-    nome: r.unidades.nome,
-    gasto: Number(r.gasto),
-    budget: r.budgetEff,
-    pctVal: r.budgetEff > 0 ? Number(r.gasto) / r.budgetEff : 0,
-  }));
+  const chartData = withEffectiveBudget
+    .map((r) => ({
+      nome: r.unidades.nome,
+      gasto: Number(r.gasto),
+      budget: r.budgetEff,
+      pctVal: r.budgetEff > 0 ? Number(r.gasto) / r.budgetEff : 0,
+    }))
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 
   const estouradas = withEffectiveBudget.filter((r) => r.budgetEff > 0 && Number(r.gasto) > r.budgetEff);
 
