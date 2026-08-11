@@ -80,10 +80,16 @@ function UnidadesPage() {
   };
 
   const gerarProximoMes = async () => {
-    const key = currentMonthKey();
-    const [y, m] = key.split("-").map(Number);
-    const nextKey = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
-    if (!confirm(`Gerar budgets do próximo mês (${nextKey}) para todas as unidades ativas?`)) return;
+    // Base = maior mês existente em budgets_mensais; se nenhum, usa o mês atual do calendário.
+    const { data: last } = await supabase
+      .from("budgets_mensais")
+      .select("mes")
+      .order("mes", { ascending: false })
+      .limit(1);
+    const baseKey = last && last.length > 0 ? String((last[0] as any).mes).slice(0, 7) : currentMonthKey();
+    const nextKey = addMonths(baseKey, 1);
+    const baseLabel = monthLabel(monthFirstDay(baseKey));
+    if (!confirm(`Gerar budgets do próximo mês (${nextKey}, baseado em ${baseLabel}) para todas as unidades ativas?`)) return;
     try {
       const { gerarProximoMes: gerarFn } = await import("@/lib/admin.functions");
       const res = await gerarFn({ data: { mes: monthFirstDay(nextKey) } });
