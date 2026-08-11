@@ -171,6 +171,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Button>
         </div>
       </aside>
+      </TooltipProvider>
 
       {/* Mobile sheet */}
       {open && (
