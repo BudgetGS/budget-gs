@@ -45,3 +45,7 @@ export const saldoBadgeBg = (pctVal: number | null) => {
   if (pctVal >= 0.85) return "bg-amber-100 text-amber-700";
   return "bg-[color:var(--secondary)]/25 text-[color:var(--secondary-foreground)]";
 };
+
+/** Classe de cor para valores monetários: vermelho quando negativo. */
+export const negCls = (n: number | null | undefined) =>
+  Number(n ?? 0) < 0 ? "text-destructive" : "";

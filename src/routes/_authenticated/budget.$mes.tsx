@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, Fragment } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { addMonths, brl, fmtPct, monthFirstDay, monthLabel, pct, saldoBadgeBg } from "@/lib/format";
+import { addMonths, brl, fmtPct, monthFirstDay, monthLabel, negCls, pct, saldoBadgeBg } from "@/lib/format";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -254,11 +254,64 @@ function BudgetMes() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Totalizer label="Budget" value={brl(totals.budget)} />
+        <Totalizer label="Budget" value={brl(totals.budget)} tone={totals.budget < 0 ? "neg" : undefined} />
         <Totalizer label="Gasto" value={brl(totals.gasto)} />
         <Totalizer label="Saldo" value={brl(totals.saldo)} tone={totals.saldo >= 0 ? "pos" : "neg"} />
         <Totalizer label="% Geral" value={fmtPct(totals.pct)} />
       </div>
+
+      {compareMeses.length > 0 && (
+        <Card className="rounded-2xl overflow-hidden">
+          <div className="p-4 border-b border-border/60 font-semibold">Comparação de meses</div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/60">
+                <tr className="text-left">
+                  <th className="px-4 py-3 font-semibold sticky left-0 bg-muted/60">Unidade</th>
+                  {compareMeses.map((m) => (
+                    <th key={m} colSpan={3} className="px-4 py-3 font-semibold text-center border-l capitalize">
+                      {monthLabel(monthFirstDay(m))}
+                    </th>
+                  ))}
+                </tr>
+                <tr className="text-xs uppercase text-muted-foreground">
+                  <th className="px-4 py-2 sticky left-0 bg-muted/60"></th>
+                  {compareMeses.map((m) => (
+                    <Fragment key={m + "h"}>
+                      <th className="px-3 py-2 text-right border-l">Budget</th>
+                      <th className="px-3 py-2 text-right">Gasto</th>
+                      <th className="px-3 py-2 text-right">%</th>
+                    </Fragment>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {allUnidades(compareData).map((u) => (
+                  <tr key={u} className="border-t border-border/60">
+                    <td className="px-4 py-2 font-medium sticky left-0 bg-background">{u}</td>
+                    {compareMeses.map((m) => {
+                      const r = compareData[m]?.find((x) => x.unidades.nome === u);
+                      const base = r ? Number(considerarAcumulado ? r.budget : r.unidades.budget_base) : 0;
+                      const p = r ? pct(Number(r.gasto), base) : null;
+                      return (
+                        <Fragment key={m + u}>
+                          <td className={`px-3 py-2 text-right border-l ${r ? negCls(base) : ""}`}>{r ? brl(base) : "—"}</td>
+                          <td className={`px-3 py-2 text-right ${r ? negCls(r.gasto) : ""}`}>{r ? brl(r.gasto) : "—"}</td>
+                          <td className="px-3 py-2 text-right">
+                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${base <= 0 && r ? "bg-destructive/15 text-destructive" : saldoBadgeBg(p)}`}>
+                              {r && base <= 0 ? "Estouro total" : fmtPct(p)}
+                            </span>
+                          </td>
+                        </Fragment>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
       <Card className="rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
@@ -313,10 +366,10 @@ function BudgetMes() {
                         brl(r.unidades.budget_base)
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right">{brl(r.budget)}</td>
+                    <td className={`px-4 py-3 text-right ${negCls(r.budget)}`}>{brl(r.budget)}</td>
                     <td className="px-4 py-3 text-right">
                       <div className="inline-flex items-center gap-2 justify-end">
-                        <span>{brl(r.gasto)}</span>
+                        <span className={negCls(r.gasto)}>{brl(r.gasto)}</span>
                         <LancarPopover
                           unidadeAtual={r.unidade_id}
                           unidades={unidadesSelecao}
@@ -339,56 +392,6 @@ function BudgetMes() {
         </div>
       </Card>
 
-      {compareMeses.length > 0 && (
-        <Card className="rounded-2xl overflow-hidden">
-          <div className="p-4 border-b border-border/60 font-semibold">Comparação de meses</div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/60">
-                <tr className="text-left">
-                  <th className="px-4 py-3 font-semibold sticky left-0 bg-muted/60">Unidade</th>
-                  {compareMeses.map((m) => (
-                    <th key={m} colSpan={3} className="px-4 py-3 font-semibold text-center border-l capitalize">
-                      {monthLabel(monthFirstDay(m))}
-                    </th>
-                  ))}
-                </tr>
-                <tr className="text-xs uppercase text-muted-foreground">
-                  <th className="px-4 py-2 sticky left-0 bg-muted/60"></th>
-                  {compareMeses.map((m) => (
-                    <Fragment key={m + "h"}>
-                      <th className="px-3 py-2 text-right border-l">Budget</th>
-                      <th className="px-3 py-2 text-right">Gasto</th>
-                      <th className="px-3 py-2 text-right">%</th>
-                    </Fragment>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {allUnidades(compareData).map((u) => (
-                  <tr key={u} className="border-t border-border/60">
-                    <td className="px-4 py-2 font-medium sticky left-0 bg-background">{u}</td>
-                    {compareMeses.map((m) => {
-                      const r = compareData[m]?.find((x) => x.unidades.nome === u);
-                      const base = r ? Number(considerarAcumulado ? r.budget : r.unidades.budget_base) : 0;
-                      const p = r ? pct(Number(r.gasto), base) : null;
-                      return (
-                        <Fragment key={m + u}>
-                          <td className="px-3 py-2 text-right border-l">{r ? brl(considerarAcumulado ? r.budget : r.unidades.budget_base) : "—"}</td>
-                          <td className="px-3 py-2 text-right">{r ? brl(r.gasto) : "—"}</td>
-                          <td className="px-3 py-2 text-right">
-                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${saldoBadgeBg(p)}`}>{fmtPct(p)}</span>
-                          </td>
-                        </Fragment>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
     </div>
   );
 }

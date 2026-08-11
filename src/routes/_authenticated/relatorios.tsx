@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { fetchSupervisores, type Supervisor } from "@/lib/supervisores";
-import { brl, fmtPct, monthLabel, pct, saldoBadgeBg } from "@/lib/format";
+import { brl, fmtPct, monthLabel, negCls, pct, saldoBadgeBg } from "@/lib/format";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend, LineChart, Line, CartesianGrid, ReferenceLine } from "recharts";
 import { Download, Building2, FileText } from "lucide-react";
 import { useWidgetConfig } from "@/lib/widget-config";
@@ -134,7 +134,9 @@ function Relatorios() {
     });
     return Array.from(map.values()).map((x) => {
       const acumulado = x.budgetTotalAcum - x.budgetFixoAcum;
-      const budget = considerarAcumulado ? x.budgetTotalAcum : x.budgetFixoAcum;
+      // Saldo do período = budget fixo total (budget_base × meses) − gasto total.
+      // Não somar budgets_mensais.budget através dos meses (duplicaria o rollover).
+      const budget = x.budgetFixoAcum;
       const saldo = budget - x.gasto;
       return {
         nome: x.nome,
@@ -145,10 +147,14 @@ function Relatorios() {
         saldo,
         pctVal: pct(x.gasto, budget),
       };
-    }).sort((a, b) => (b.pctVal ?? 0) - (a.pctVal ?? 0));
-  }, [filtered, considerarAcumulado]);
+    }).sort((a, b) => b.budget - a.budget);
+  }, [filtered]);
 
-  const estouros = byUnidade.filter((u) => (u.pctVal ?? 0) > 1);
+  // Estouro = saldo negativo, ordenado do saldo mais negativo ao menos negativo.
+  const estouros = useMemo(
+    () => byUnidade.filter((u) => u.saldo < 0).sort((a, b) => a.saldo - b.saldo),
+    [byUnidade],
+  );
 
   const gastoPorUnidade = useMemo(
     () => byUnidade.map((u) => ({ nome: u.nome, gasto: u.gasto })).sort((a, b) => b.gasto - a.gasto),
@@ -204,13 +210,9 @@ function Relatorios() {
   const orderedIds = widgets.filter((w) => w.enabled).map((w) => w.id);
 
   const exportCsv = () => {
-    const header = considerarAcumulado
-      ? ["Unidade", "Budget fixo", "Saldo acumulado", "Budget total", "Gasto", "Saldo", "%"].join(",")
-      : ["Unidade", "Budget", "Gasto", "Saldo", "%"].join(",");
+    const header = ["Unidade", "Budget fixo", "Gasto", "Saldo", "%"].join(",");
     const lines = byUnidade.map((u) =>
-      considerarAcumulado
-        ? [u.nome, u.budgetFixo.toFixed(2), u.acumulado.toFixed(2), u.budget.toFixed(2), u.gasto.toFixed(2), u.saldo.toFixed(2), (u.pctVal ?? 0).toFixed(4)].join(",")
-        : [u.nome, u.budget.toFixed(2), u.gasto.toFixed(2), u.saldo.toFixed(2), (u.pctVal ?? 0).toFixed(4)].join(","),
+      [u.nome, u.budgetFixo.toFixed(2), u.gasto.toFixed(2), u.saldo.toFixed(2), (u.pctVal ?? 0).toFixed(4)].join(","),
     );
     const blob = new Blob([[header, ...lines].join("\n")], { type: "text/csv;charset=utf-8;" });
     const a = document.createElement("a");
@@ -424,21 +426,13 @@ function Relatorios() {
         );
         if (id === "acumulado-tabela") return (
           <Card key={id} className="rounded-2xl overflow-hidden">
-            <CardHeader><CardTitle>{considerarAcumulado ? "Acumulado por unidade" : "Por unidade (sem rollover)"}</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Acumulado por unidade</CardTitle></CardHeader>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-muted/60">
                   <tr className="text-left">
                     <th className="px-4 py-3 font-semibold">Unidade</th>
-                    {considerarAcumulado ? (
-                      <>
-                        <th className="px-4 py-3 font-semibold text-right">Budget fixo</th>
-                        <th className="px-4 py-3 font-semibold text-right">Saldo acum.</th>
-                        <th className="px-4 py-3 font-semibold text-right">Total</th>
-                      </>
-                    ) : (
-                      <th className="px-4 py-3 font-semibold text-right">Budget</th>
-                    )}
+                    <th className="px-4 py-3 font-semibold text-right">Budget fixo</th>
                     <th className="px-4 py-3 font-semibold text-right">Gasto</th>
                     <th className="px-4 py-3 font-semibold text-right">Saldo</th>
                     <th className="px-4 py-3 font-semibold text-right">%</th>
@@ -448,24 +442,20 @@ function Relatorios() {
                   {byUnidade.map((u) => (
                     <tr key={u.nome} className="border-t border-border/60">
                       <td className="px-4 py-2 font-medium">{u.nome}</td>
-                      {considerarAcumulado ? (
-                        <>
-                          <td className="px-4 py-2 text-right">{brl(u.budgetFixo)}</td>
-                          <td className={`px-4 py-2 text-right ${u.acumulado < 0 ? "text-destructive" : ""}`}>{brl(u.acumulado)}</td>
-                          <td className="px-4 py-2 text-right font-semibold">{brl(u.budget)}</td>
-                        </>
-                      ) : (
-                        <td className="px-4 py-2 text-right">{brl(u.budget)}</td>
-                      )}
-                      <td className="px-4 py-2 text-right">{brl(u.gasto)}</td>
-                      <td className={`px-4 py-2 text-right ${u.saldo < 0 ? "text-destructive" : ""}`}>{brl(u.saldo)}</td>
+                      <td className={`px-4 py-2 text-right ${negCls(u.budgetFixo)}`}>{brl(u.budgetFixo)}</td>
+                      <td className={`px-4 py-2 text-right ${negCls(u.gasto)}`}>{brl(u.gasto)}</td>
+                      <td className={`px-4 py-2 text-right font-semibold ${negCls(u.saldo)}`}>{brl(u.saldo)}</td>
                       <td className="px-4 py-2 text-right">
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${saldoBadgeBg(u.pctVal)}`}>{fmtPct(u.pctVal)}</span>
+                        {u.budget <= 0 ? (
+                          <span className="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold bg-destructive/15 text-destructive">Estouro total</span>
+                        ) : (
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${saldoBadgeBg(u.pctVal)}`}>{fmtPct(u.pctVal)}</span>
+                        )}
                       </td>
                     </tr>
                   ))}
                   {byUnidade.length === 0 && (
-                    <tr><td colSpan={considerarAcumulado ? 7 : 5} className="text-center py-8 text-muted-foreground">Sem dados no período.</td></tr>
+                    <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">Sem dados no período.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -483,7 +473,10 @@ function Relatorios() {
                   {estouros.map((u, i) => (
                     <li key={u.nome} className="flex items-center justify-between rounded-xl bg-destructive/5 px-3 py-2">
                       <span className="font-medium"><span className="text-destructive font-bold mr-2">#{i + 1}</span>{u.nome}</span>
-                      <span className="text-destructive font-bold">{fmtPct(u.pctVal)}</span>
+                      <span className="text-destructive font-bold">
+                        {brl(u.saldo)}
+                        {u.budget > 0 && <span className="ml-2 text-xs font-semibold">({fmtPct(u.pctVal)})</span>}
+                      </span>
                     </li>
                   ))}
                 </ol>
@@ -547,11 +540,15 @@ function Relatorios() {
                   {byResponsavel.map((r) => (
                     <tr key={r.nome} className="border-t border-border/60">
                       <td className="px-4 py-2 font-medium">{r.nome}</td>
-                      <td className="px-4 py-2 text-right">{brl(r.budget)}</td>
-                      <td className="px-4 py-2 text-right">{brl(r.gasto)}</td>
-                      <td className={`px-4 py-2 text-right ${r.saldo < 0 ? "text-destructive" : ""}`}>{brl(r.saldo)}</td>
+                      <td className={`px-4 py-2 text-right ${negCls(r.budget)}`}>{brl(r.budget)}</td>
+                      <td className={`px-4 py-2 text-right ${negCls(r.gasto)}`}>{brl(r.gasto)}</td>
+                      <td className={`px-4 py-2 text-right ${negCls(r.saldo)}`}>{brl(r.saldo)}</td>
                       <td className="px-4 py-2 text-right">
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${saldoBadgeBg(r.pctVal)}`}>{fmtPct(r.pctVal)}</span>
+                        {r.budget <= 0 ? (
+                          <span className="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold bg-destructive/15 text-destructive">Estouro total</span>
+                        ) : (
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${saldoBadgeBg(r.pctVal)}`}>{fmtPct(r.pctVal)}</span>
+                        )}
                       </td>
                     </tr>
                   ))}
