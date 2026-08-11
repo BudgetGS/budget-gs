@@ -91,6 +91,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-muted/30 flex">
       {/* Sidebar - desktop */}
+      <TooltipProvider delayDuration={200}>
       <aside
         className={cn(
           "hidden md:flex flex-col border-r border-border bg-sidebar sticky top-0 h-screen transition-[width] duration-200",
