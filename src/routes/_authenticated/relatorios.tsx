@@ -426,21 +426,13 @@ function Relatorios() {
         );
         if (id === "acumulado-tabela") return (
           <Card key={id} className="rounded-2xl overflow-hidden">
-            <CardHeader><CardTitle>{considerarAcumulado ? "Acumulado por unidade" : "Por unidade (sem rollover)"}</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Acumulado por unidade</CardTitle></CardHeader>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-muted/60">
                   <tr className="text-left">
                     <th className="px-4 py-3 font-semibold">Unidade</th>
-                    {considerarAcumulado ? (
-                      <>
-                        <th className="px-4 py-3 font-semibold text-right">Budget fixo</th>
-                        <th className="px-4 py-3 font-semibold text-right">Saldo acum.</th>
-                        <th className="px-4 py-3 font-semibold text-right">Total</th>
-                      </>
-                    ) : (
-                      <th className="px-4 py-3 font-semibold text-right">Budget</th>
-                    )}
+                    <th className="px-4 py-3 font-semibold text-right">Budget fixo</th>
                     <th className="px-4 py-3 font-semibold text-right">Gasto</th>
                     <th className="px-4 py-3 font-semibold text-right">Saldo</th>
                     <th className="px-4 py-3 font-semibold text-right">%</th>
@@ -450,24 +442,20 @@ function Relatorios() {
                   {byUnidade.map((u) => (
                     <tr key={u.nome} className="border-t border-border/60">
                       <td className="px-4 py-2 font-medium">{u.nome}</td>
-                      {considerarAcumulado ? (
-                        <>
-                          <td className="px-4 py-2 text-right">{brl(u.budgetFixo)}</td>
-                          <td className={`px-4 py-2 text-right ${u.acumulado < 0 ? "text-destructive" : ""}`}>{brl(u.acumulado)}</td>
-                          <td className="px-4 py-2 text-right font-semibold">{brl(u.budget)}</td>
-                        </>
-                      ) : (
-                        <td className="px-4 py-2 text-right">{brl(u.budget)}</td>
-                      )}
-                      <td className="px-4 py-2 text-right">{brl(u.gasto)}</td>
-                      <td className={`px-4 py-2 text-right ${u.saldo < 0 ? "text-destructive" : ""}`}>{brl(u.saldo)}</td>
+                      <td className={`px-4 py-2 text-right ${negCls(u.budgetFixo)}`}>{brl(u.budgetFixo)}</td>
+                      <td className={`px-4 py-2 text-right ${negCls(u.gasto)}`}>{brl(u.gasto)}</td>
+                      <td className={`px-4 py-2 text-right font-semibold ${negCls(u.saldo)}`}>{brl(u.saldo)}</td>
                       <td className="px-4 py-2 text-right">
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${saldoBadgeBg(u.pctVal)}`}>{fmtPct(u.pctVal)}</span>
+                        {u.budget <= 0 ? (
+                          <span className="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold bg-destructive/15 text-destructive">Estouro total</span>
+                        ) : (
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${saldoBadgeBg(u.pctVal)}`}>{fmtPct(u.pctVal)}</span>
+                        )}
                       </td>
                     </tr>
                   ))}
                   {byUnidade.length === 0 && (
-                    <tr><td colSpan={considerarAcumulado ? 7 : 5} className="text-center py-8 text-muted-foreground">Sem dados no período.</td></tr>
+                    <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">Sem dados no período.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -485,7 +473,10 @@ function Relatorios() {
                   {estouros.map((u, i) => (
                     <li key={u.nome} className="flex items-center justify-between rounded-xl bg-destructive/5 px-3 py-2">
                       <span className="font-medium"><span className="text-destructive font-bold mr-2">#{i + 1}</span>{u.nome}</span>
-                      <span className="text-destructive font-bold">{fmtPct(u.pctVal)}</span>
+                      <span className="text-destructive font-bold">
+                        {brl(u.saldo)}
+                        {u.budget > 0 && <span className="ml-2 text-xs font-semibold">({fmtPct(u.pctVal)})</span>}
+                      </span>
                     </li>
                   ))}
                 </ol>
@@ -549,11 +540,15 @@ function Relatorios() {
                   {byResponsavel.map((r) => (
                     <tr key={r.nome} className="border-t border-border/60">
                       <td className="px-4 py-2 font-medium">{r.nome}</td>
-                      <td className="px-4 py-2 text-right">{brl(r.budget)}</td>
-                      <td className="px-4 py-2 text-right">{brl(r.gasto)}</td>
-                      <td className={`px-4 py-2 text-right ${r.saldo < 0 ? "text-destructive" : ""}`}>{brl(r.saldo)}</td>
+                      <td className={`px-4 py-2 text-right ${negCls(r.budget)}`}>{brl(r.budget)}</td>
+                      <td className={`px-4 py-2 text-right ${negCls(r.gasto)}`}>{brl(r.gasto)}</td>
+                      <td className={`px-4 py-2 text-right ${negCls(r.saldo)}`}>{brl(r.saldo)}</td>
                       <td className="px-4 py-2 text-right">
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${saldoBadgeBg(r.pctVal)}`}>{fmtPct(r.pctVal)}</span>
+                        {r.budget <= 0 ? (
+                          <span className="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold bg-destructive/15 text-destructive">Estouro total</span>
+                        ) : (
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${saldoBadgeBg(r.pctVal)}`}>{fmtPct(r.pctVal)}</span>
+                        )}
                       </td>
                     </tr>
                   ))}
