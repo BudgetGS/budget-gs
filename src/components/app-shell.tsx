@@ -98,10 +98,28 @@ export function AppShell({ children }: { children: ReactNode }) {
           collapsed ? "md:w-16" : "md:w-64",
         )}
       >
-        <div className={cn("py-6 border-b border-border shrink-0", collapsed ? "px-2 flex justify-center" : "px-6")}>
-          <div className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-1.5 text-primary-foreground font-bold tracking-tight">
-            <span className="h-1.5 w-1.5 rounded-full bg-secondary" />
-            {collapsed ? "G" : "GS"}
+        <div className={cn("py-6 border-b border-border shrink-0", collapsed ? "px-2" : "px-6")}>
+          <div className={cn("flex items-center", collapsed ? "flex-col gap-2" : "justify-between gap-2")}>
+            <div className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-1.5 text-primary-foreground font-bold tracking-tight">
+              <span className="h-1.5 w-1.5 rounded-full bg-secondary" />
+              {collapsed ? "G" : "GS"}
+            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-xl shrink-0"
+                  onClick={() => setCollapsed((c) => !c)}
+                  aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
+                >
+                  {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="font-medium">
+                {collapsed ? "Expandir menu" : "Recolher menu"}
+              </TooltipContent>
+            </Tooltip>
           </div>
           {!collapsed && (
             <p className="mt-2 text-xs text-muted-foreground font-medium">Controle de Budget</p>
@@ -159,16 +177,6 @@ export function AppShell({ children }: { children: ReactNode }) {
               <TooltipContent side="right" className="font-medium">Sair</TooltipContent>
             </Tooltip>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn("w-full rounded-xl", collapsed && "px-2")}
-            onClick={() => setCollapsed((c) => !c)}
-            aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
-          >
-            {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-            {!collapsed && <span className="ml-2">Recolher</span>}
-          </Button>
         </div>
       </aside>
       </TooltipProvider>
