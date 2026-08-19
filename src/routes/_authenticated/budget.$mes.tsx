@@ -177,6 +177,23 @@ function BudgetMes() {
     await load();
   };
 
+  const carregarLancamentos = async (budgetMensalId: string) => {
+    setLoadingLancamentos(true);
+    const { data, error } = await supabase
+      .from("lancamentos")
+      .select("id, data_gasto, descricao, valor, profiles(nome)")
+      .eq("budget_mensal_id", budgetMensalId)
+      .order("created_at", { ascending: false });
+    if (error) toast.error(error.message);
+    setLancamentos((data as any) ?? []);
+    setLoadingLancamentos(false);
+  };
+
+  const abrirLancamentos = (row: Budget) => {
+    setDialogUnidade(row);
+    carregarLancamentos(row.id);
+  };
+
   const gerarMeses = useMemo(() => {
     const arr: string[] = [];
     const now = new Date();
