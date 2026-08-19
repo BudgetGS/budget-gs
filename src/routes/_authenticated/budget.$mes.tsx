@@ -373,7 +373,16 @@ function BudgetMes() {
                 const p = pct(Number(r.gasto), base);
                 return (
                   <tr key={r.id} className="border-t border-border/60">
-                    <td className="px-4 py-3 font-medium">{r.unidades.nome}</td>
+                    <td className="px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => abrirLancamentos(r)}
+                        className="font-medium inline-flex items-center gap-2 hover:text-primary transition"
+                      >
+                        {r.unidades.nome}
+                        <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                      </button>
+                    </td>
                     <td className="px-4 py-3 text-right">
                       {bulkEdit && canEditBudget ? (
                         <Input
