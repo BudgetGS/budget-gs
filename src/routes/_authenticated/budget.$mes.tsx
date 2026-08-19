@@ -422,6 +422,46 @@ function BudgetMes() {
         </div>
       </Card>
 
+      <Dialog open={!!dialogUnidade} onOpenChange={(open) => { if (!open) setDialogUnidade(null); }}>
+        <DialogContent className="sm:max-w-lg rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Receipt className="h-5 w-5 text-primary" />
+              Gastos — {dialogUnidade?.unidades.nome}
+            </DialogTitle>
+            <DialogDescription>
+              Lançamentos de {monthLabel(monthFirstDay(mes))}
+            </DialogDescription>
+          </DialogHeader>
+          {loadingLancamentos ? (
+            <div className="py-10 text-center"><Loader2 className="h-5 w-5 animate-spin inline" /></div>
+          ) : lancamentos.length === 0 ? (
+            <div className="py-10 text-center text-muted-foreground text-sm">Nenhum lançamento neste mês.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/60">
+                  <tr className="text-left">
+                    <th className="px-3 py-2 font-semibold">Data</th>
+                    <th className="px-3 py-2 font-semibold">Descrição</th>
+                    <th className="px-3 py-2 font-semibold text-right">Valor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lancamentos.map((l) => (
+                    <tr key={l.id} className="border-t border-border/60">
+                      <td className="px-3 py-2 whitespace-nowrap">{new Date(l.data_gasto).toLocaleDateString("pt-BR")}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{l.descricao || "—"}</td>
+                      <td className={`px-3 py-2 text-right font-medium ${negCls(l.valor)}`}>{brl(l.valor)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
