@@ -47,6 +47,9 @@ function BudgetMes() {
   const [savingBulk, setSavingBulk] = useState(false);
   const [considerarAcumulado, setConsiderarAcumulado] = useState(true);
   const [unidadesSelecao, setUnidadesSelecao] = useState<{ id: string; nome: string }[]>([]);
+  const [dialogUnidade, setDialogUnidade] = useState<Budget | null>(null);
+  const [lancamentos, setLancamentos] = useState<{ id: string; data_gasto: string; descricao: string | null; valor: number; profiles: { nome: string } | null }[]>([]);
+  const [loadingLancamentos, setLoadingLancamentos] = useState(false);
 
   const load = async () => {
     setLoading(true);
