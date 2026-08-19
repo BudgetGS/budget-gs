@@ -6,7 +6,7 @@ import { addMonths, brl, fmtPct, monthFirstDay, monthLabel, negCls, pct, saldoBa
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Check, ChevronLeft, ChevronRight, Eye, Loader2, Pencil, Plus, Receipt } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Loader2, Pencil, Plus, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -377,10 +377,9 @@ function BudgetMes() {
                       <button
                         type="button"
                         onClick={() => abrirLancamentos(r)}
-                        className="font-medium inline-flex items-center gap-2 hover:text-primary transition"
+                        className="font-medium hover:text-primary transition"
                       >
                         {r.unidades.nome}
-                        <Eye className="h-3.5 w-3.5 text-muted-foreground" />
                       </button>
                     </td>
                     <td className="px-4 py-3 text-right">
