@@ -6,7 +6,7 @@ import { addMonths, brl, fmtPct, monthFirstDay, monthLabel, negCls, pct, saldoBa
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Check, ChevronLeft, ChevronRight, Loader2, Pencil, Plus } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Eye, Loader2, Pencil, Plus, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { fetchSupervisores, type Supervisor } from "@/lib/supervisores";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/_authenticated/budget/$mes")({
   component: BudgetMes,
@@ -46,6 +47,9 @@ function BudgetMes() {
   const [savingBulk, setSavingBulk] = useState(false);
   const [considerarAcumulado, setConsiderarAcumulado] = useState(true);
   const [unidadesSelecao, setUnidadesSelecao] = useState<{ id: string; nome: string }[]>([]);
+  const [dialogUnidade, setDialogUnidade] = useState<Budget | null>(null);
+  const [lancamentos, setLancamentos] = useState<{ id: string; data_gasto: string; descricao: string | null; valor: number; profiles: { nome: string } | null }[]>([]);
+  const [loadingLancamentos, setLoadingLancamentos] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -171,6 +175,23 @@ function BudgetMes() {
     }
     toast.success("Lançamento registrado");
     await load();
+  };
+
+  const carregarLancamentos = async (budgetMensalId: string) => {
+    setLoadingLancamentos(true);
+    const { data, error } = await supabase
+      .from("lancamentos")
+      .select("id, data_gasto, descricao, valor, profiles(nome)")
+      .eq("budget_mensal_id", budgetMensalId)
+      .order("created_at", { ascending: false });
+    if (error) toast.error(error.message);
+    setLancamentos((data as any) ?? []);
+    setLoadingLancamentos(false);
+  };
+
+  const abrirLancamentos = (row: Budget) => {
+    setDialogUnidade(row);
+    carregarLancamentos(row.id);
   };
 
   const gerarMeses = useMemo(() => {
@@ -352,7 +373,16 @@ function BudgetMes() {
                 const p = pct(Number(r.gasto), base);
                 return (
                   <tr key={r.id} className="border-t border-border/60">
-                    <td className="px-4 py-3 font-medium">{r.unidades.nome}</td>
+                    <td className="px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => abrirLancamentos(r)}
+                        className="font-medium inline-flex items-center gap-2 hover:text-primary transition"
+                      >
+                        {r.unidades.nome}
+                        <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                      </button>
+                    </td>
                     <td className="px-4 py-3 text-right">
                       {bulkEdit && canEditBudget ? (
                         <Input
@@ -391,6 +421,46 @@ function BudgetMes() {
           </table>
         </div>
       </Card>
+
+      <Dialog open={!!dialogUnidade} onOpenChange={(open) => { if (!open) setDialogUnidade(null); }}>
+        <DialogContent className="sm:max-w-lg rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Receipt className="h-5 w-5 text-primary" />
+              Gastos — {dialogUnidade?.unidades.nome}
+            </DialogTitle>
+            <DialogDescription>
+              Lançamentos de {monthLabel(monthFirstDay(mes))}
+            </DialogDescription>
+          </DialogHeader>
+          {loadingLancamentos ? (
+            <div className="py-10 text-center"><Loader2 className="h-5 w-5 animate-spin inline" /></div>
+          ) : lancamentos.length === 0 ? (
+            <div className="py-10 text-center text-muted-foreground text-sm">Nenhum lançamento neste mês.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/60">
+                  <tr className="text-left">
+                    <th className="px-3 py-2 font-semibold">Data</th>
+                    <th className="px-3 py-2 font-semibold">Descrição</th>
+                    <th className="px-3 py-2 font-semibold text-right">Valor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lancamentos.map((l) => (
+                    <tr key={l.id} className="border-t border-border/60">
+                      <td className="px-3 py-2 whitespace-nowrap">{new Date(l.data_gasto).toLocaleDateString("pt-BR")}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{l.descricao || "—"}</td>
+                      <td className={`px-3 py-2 text-right font-medium ${negCls(l.valor)}`}>{brl(l.valor)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
     </div>
   );
