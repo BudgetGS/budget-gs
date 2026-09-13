@@ -187,7 +187,7 @@ export const gerarProximoMes = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ mes: z.string() }).parse(input))
   .handler(async ({ data, context }) => {
-    const supabaseAdmin = await assertAdminOrGerente(context.userId);
+    const supabaseAdmin = await assertAnyRole(context.userId);
     const { data: count, error } = await supabaseAdmin.rpc("gerar_proximo_mes", { _mes: data.mes });
     if (error) throw new Error(error.message);
     return { count: count ?? 0 };
