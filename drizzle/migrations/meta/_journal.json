@@ -8,6 +8,13 @@
       "when": 1789339459086,
       "tag": "0000_lov_database_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789339766539,
+      "tag": "0001_create_role_permissions",
+      "breakpoints": true
     }
   ]
 }
