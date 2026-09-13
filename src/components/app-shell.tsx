@@ -25,7 +25,7 @@ const NAV: NavItem[] = [
   { to: "/budget", label: "Meses", icon: Calendar },
   { to: "/historico", label: "Histórico", icon: History },
   { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
-  { to: "/unidades", label: "Unidades", icon: Building2, roles: ["admin", "gerente"] },
+  { to: "/unidades", label: "Unidades", icon: Building2 },
   { to: "/configuracoes", label: "Configurações", icon: Settings, roles: ["admin"] },
 ];
 

@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789339459086,
+      "tag": "0000_lov_database_migration",
+      "breakpoints": true
+    }
+  ]
+}
