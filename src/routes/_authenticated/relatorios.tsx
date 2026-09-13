@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { fetchSupervisores, type Supervisor } from "@/lib/supervisores";
 import { brl, fmtPct, monthLabel, negCls, pct, saldoBadgeBg } from "@/lib/format";
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend, LineChart, Line, CartesianGrid, ReferenceLine } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend, LineChart, Line, CartesianGrid, ReferenceLine, Cell } from "recharts";
 import { Download, Building2, FileText } from "lucide-react";
 import { useWidgetConfig } from "@/lib/widget-config";
 
@@ -359,8 +359,16 @@ function Relatorios() {
                     <YAxis fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                     <Tooltip formatter={(v: number) => brl(v)} contentStyle={{ borderRadius: 12 }} />
                     <Legend />
-                    <Bar dataKey="budget" name={considerarAcumulado ? "Budget total" : "Budget fixo"} fill="var(--color-secondary)" radius={[6, 6, 0, 0]} />
-                    <Bar dataKey="gasto" name="Gasto" fill="var(--color-primary)" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="budget" name={considerarAcumulado ? "Budget total" : "Budget fixo"} radius={[6, 6, 0, 0]}>
+                      {monthly.map((d: any, i: number) => (
+                        <Cell key={i} fill={Number(d.budget) < 0 ? "var(--color-destructive)" : "var(--color-secondary)"} />
+                      ))}
+                    </Bar>
+                    <Bar dataKey="gasto" name="Gasto" radius={[6, 6, 0, 0]}>
+                      {monthly.map((d: any, i: number) => (
+                        <Cell key={i} fill={Number(d.gasto) < 0 ? "var(--color-destructive)" : "var(--color-primary)"} />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -377,7 +385,11 @@ function Relatorios() {
                     <XAxis dataKey="nome" angle={-30} textAnchor="end" fontSize={11} interval={0} />
                     <YAxis fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                     <Tooltip formatter={(v: number) => brl(v)} contentStyle={{ borderRadius: 12 }} />
-                    <Bar dataKey="gasto" name="Gasto" fill="var(--color-primary)" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="gasto" name="Gasto" radius={[6, 6, 0, 0]}>
+                      {gastoPorUnidade.map((d: any, i: number) => (
+                        <Cell key={i} fill={Number(d.gasto) < 0 ? "var(--color-destructive)" : "var(--color-primary)"} />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>

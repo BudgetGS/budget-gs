@@ -256,10 +256,14 @@ function Dashboard() {
                       <XAxis dataKey="nome" angle={-30} textAnchor="end" fontSize={11} interval={0} />
                       <YAxis fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                       <Tooltip formatter={(v: number) => brl(v)} contentStyle={{ borderRadius: 12, border: "1px solid var(--color-border)" }} />
-                      <Bar dataKey="budget" fill="var(--color-secondary)" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="budget" radius={[6, 6, 0, 0]}>
+                        {chartData.map((d, i) => (
+                          <Cell key={i} fill={d.budget < 0 ? "var(--color-destructive)" : "var(--color-secondary)"} />
+                        ))}
+                      </Bar>
                       <Bar dataKey="gasto" radius={[6, 6, 0, 0]}>
                         {chartData.map((d, i) => (
-                          <Cell key={i} fill={d.pctVal >= 1 ? "var(--color-destructive)" : "var(--color-primary)"} />
+                          <Cell key={i} fill={d.gasto < 0 || d.pctVal >= 1 ? "var(--color-destructive)" : "var(--color-primary)"} />
                         ))}
                       </Bar>
                     </BarChart>
