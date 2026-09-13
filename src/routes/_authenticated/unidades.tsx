@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,7 +29,6 @@ type Sup = { id: string; nome: string };
 
 function UnidadesPage() {
   const { role } = useAuth();
-  const navigate = useNavigate();
   const canManage = role === "admin" || role === "gerente";
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   const [sups, setSups] = useState<Sup[]>([]);
