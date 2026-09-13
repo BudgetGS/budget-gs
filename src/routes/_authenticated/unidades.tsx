@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,7 +29,6 @@ type Sup = { id: string; nome: string };
 
 function UnidadesPage() {
   const { role } = useAuth();
-  const navigate = useNavigate();
   const canManage = role === "admin" || role === "gerente";
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   const [sups, setSups] = useState<Sup[]>([]);
@@ -39,9 +38,8 @@ function UnidadesPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!canManage) { navigate({ to: "/dashboard" }); return; }
     load();
-  }, [canManage, navigate]);
+  }, []);
 
   const load = async () => {
     const [{ data: u }, sList] = await Promise.all([
@@ -110,7 +108,9 @@ function UnidadesPage() {
           <Button variant="secondary" className="rounded-xl" onClick={gerarProximoMes}>
             <PlayCircle className="h-4 w-4" /> Gerar próximo mês
           </Button>
-          <Button className="rounded-xl" onClick={openNew}><Plus className="h-4 w-4" />Nova</Button>
+          {canManage && (
+            <Button className="rounded-xl" onClick={openNew}><Plus className="h-4 w-4" />Nova</Button>
+          )}
         </div>
       </div>
 
@@ -156,7 +156,9 @@ function UnidadesPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(u)}><Pencil className="h-4 w-4" /></Button>
+                      {canManage && (
+                        <Button variant="ghost" size="sm" onClick={() => openEdit(u)}><Pencil className="h-4 w-4" /></Button>
+                      )}
                     </td>
                   </tr>
                 );

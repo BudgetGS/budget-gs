@@ -16,13 +16,16 @@ async function assertAdmin(userId: string) {
   return supabaseAdmin;
 }
 
-async function assertAdminOrGerente(userId: string) {
+
+// Qualquer papel reconhecido (admin, gerente ou supervisor) — usado para
+// ações operacionais como gerar o próximo mês.
+async function assertAnyRole(userId: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data } = await supabaseAdmin
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)
-    .in("role", ["admin", "gerente"]);
+    .in("role", ["admin", "gerente", "supervisor"]);
   if (!data || data.length === 0) throw new Error("Sem permissão");
   return supabaseAdmin;
 }
@@ -174,7 +177,7 @@ export const gerarProximoMes = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ mes: z.string() }).parse(input))
   .handler(async ({ data, context }) => {
-    const supabaseAdmin = await assertAdminOrGerente(context.userId);
+    const supabaseAdmin = await assertAnyRole(context.userId);
     const { data: count, error } = await supabaseAdmin.rpc("gerar_proximo_mes", { _mes: data.mes });
     if (error) throw new Error(error.message);
     return { count: count ?? 0 };
