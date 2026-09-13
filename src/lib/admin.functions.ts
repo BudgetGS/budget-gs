@@ -16,16 +16,6 @@ async function assertAdmin(userId: string) {
   return supabaseAdmin;
 }
 
-async function assertAdminOrGerente(userId: string) {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data } = await supabaseAdmin
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .in("role", ["admin", "gerente"]);
-  if (!data || data.length === 0) throw new Error("Sem permissão");
-  return supabaseAdmin;
-}
 
 // Qualquer papel reconhecido (admin, gerente ou supervisor) — usado para
 // ações operacionais como gerar o próximo mês.
