@@ -65,10 +65,12 @@ function ConfiguracoesPage() {
       <Tabs defaultValue="users">
         <TabsList className="rounded-xl">
           <TabsTrigger value="users">Usuários e Acessos</TabsTrigger>
+          <TabsTrigger value="permissoes">Permissões</TabsTrigger>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
         </TabsList>
         <TabsContent value="users" className="mt-6"><UsersTab /></TabsContent>
+        <TabsContent value="permissoes" className="mt-6"><PermissoesTab /></TabsContent>
         <TabsContent value="dashboard" className="mt-6">
           <WidgetsTab scope="dashboard" defs={DASHBOARD_WIDGETS} title="Widgets do Dashboard" />
         </TabsContent>
