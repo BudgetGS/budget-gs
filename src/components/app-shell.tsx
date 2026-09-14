@@ -1,5 +1,6 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
+import { usePermissions } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
@@ -44,6 +45,7 @@ function Greeting({ name }: { name: string }) {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { profile, role, signOut } = useAuth();
+  const { can } = usePermissions();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
@@ -56,7 +58,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     window.localStorage.setItem(COLLAPSE_KEY, collapsed ? "1" : "0");
   }, [collapsed]);
 
-  const items = NAV.filter((n) => !n.roles || (role && n.roles.includes(role)));
+  const items = NAV.filter((n) => can(n.permission));
 
   const handleSignOut = async () => {
     await signOut();
