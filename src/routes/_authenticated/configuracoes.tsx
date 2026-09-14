@@ -386,8 +386,8 @@ function PermissoesTab() {
               </thead>
               <tbody>
                 {groups.map((g) => (
-                  <>
-                    <tr key={g} className="border-t border-border/60 bg-muted/30">
+                  <Fragment key={g}>
+                    <tr className="border-t border-border/60 bg-muted/30">
                       <td colSpan={ROLES.length + 1} className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                         {g}
                       </td>
