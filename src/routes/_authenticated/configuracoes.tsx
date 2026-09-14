@@ -19,6 +19,13 @@ import {
   useWidgetConfig,
   type WidgetDef,
 } from "@/lib/widget-config";
+import {
+  PERMISSIONS,
+  ROLES,
+  fetchPermissionMatrix,
+  type PermissionMatrix,
+} from "@/lib/permissions";
+import { Fragment } from "react";
 
 export const Route = createFileRoute("/_authenticated/configuracoes")({
   component: ConfiguracoesPage,
@@ -65,10 +72,12 @@ function ConfiguracoesPage() {
       <Tabs defaultValue="users">
         <TabsList className="rounded-xl">
           <TabsTrigger value="users">Usuários e Acessos</TabsTrigger>
+          <TabsTrigger value="permissoes">Permissões</TabsTrigger>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
         </TabsList>
         <TabsContent value="users" className="mt-6"><UsersTab /></TabsContent>
+        <TabsContent value="permissoes" className="mt-6"><PermissoesTab /></TabsContent>
         <TabsContent value="dashboard" className="mt-6">
           <WidgetsTab scope="dashboard" defs={DASHBOARD_WIDGETS} title="Widgets do Dashboard" />
         </TabsContent>
@@ -311,6 +320,100 @@ function UsersTab() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+/* ------------------------ Permissões tab ------------------------ */
+
+function PermissoesTab() {
+  const [matrix, setMatrix] = useState<PermissionMatrix | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  useEffect(() => { fetchPermissionMatrix().then(setMatrix); }, []);
+
+  const toggle = async (role: string, permission: string, value: boolean) => {
+    const key = `${role}:${permission}`;
+    setBusy(key);
+    try {
+      if (value) {
+        const { error } = await supabase.from("role_permissions").insert({ role: role as any, permission });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("role_permissions")
+          .delete()
+          .eq("role", role as any)
+          .eq("permission", permission);
+        if (error) throw error;
+      }
+      setMatrix((m) => {
+        if (!m) return m;
+        const next: PermissionMatrix = { ...m, [role]: new Set(m[role] ?? []) };
+        if (value) next[role].add(permission); else next[role].delete(permission);
+        return next;
+      });
+    } catch (e: any) {
+      toast.error(e.message ?? "Não foi possível salvar");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const groups = Array.from(new Set(PERMISSIONS.map((p) => p.group)));
+
+  return (
+    <Card className="rounded-2xl overflow-hidden">
+      <CardHeader>
+        <CardTitle>Acessos por nível</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
+          O nível <b>admin</b> tem acesso total garantido pelo sistema — as marcações abaixo servem de referência e não
+          removem esse acesso.
+        </div>
+        {!matrix ? (
+          <p className="text-sm text-muted-foreground">Carregando...</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/60">
+                <tr className="text-left">
+                  <th className="px-4 py-3 font-semibold">Acesso</th>
+                  {ROLES.map((r) => (
+                    <th key={r} className="px-4 py-3 font-semibold text-center capitalize">{r}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {groups.map((g) => (
+                  <Fragment key={g}>
+                    <tr className="border-t border-border/60 bg-muted/30">
+                      <td colSpan={ROLES.length + 1} className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        {g}
+                      </td>
+                    </tr>
+                    {PERMISSIONS.filter((p) => p.group === g).map((p) => (
+                      <tr key={p.id} className="border-t border-border/60">
+                        <td className="px-4 py-3 font-medium">{p.label}</td>
+                        {ROLES.map((r) => (
+                          <td key={r} className="px-4 py-3 text-center">
+                            <Checkbox
+                              checked={r === "admin" ? true : (matrix[r]?.has(p.id) ?? false)}
+                              disabled={r === "admin" || busy === `${r}:${p.id}`}
+                              onCheckedChange={(v) => toggle(r, p.id, !!v)}
+                            />
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
