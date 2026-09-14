@@ -19,6 +19,13 @@ import {
   useWidgetConfig,
   type WidgetDef,
 } from "@/lib/widget-config";
+import {
+  PERMISSIONS,
+  ROLES,
+  fetchPermissionMatrix,
+  type PermissionMatrix,
+} from "@/lib/permissions";
+import { Fragment } from "react";
 
 export const Route = createFileRoute("/_authenticated/configuracoes")({
   component: ConfiguracoesPage,
