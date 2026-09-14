@@ -19,14 +19,14 @@ import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 
-type NavItem = { to: string; label: string; icon: any; roles?: string[] };
+type NavItem = { to: string; label: string; icon: any; permission: string };
 const NAV: NavItem[] = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/budget", label: "Meses", icon: Calendar },
-  { to: "/historico", label: "Histórico", icon: History },
-  { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
-  { to: "/unidades", label: "Unidades", icon: Building2 },
-  { to: "/configuracoes", label: "Configurações", icon: Settings, roles: ["admin"] },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "view.dashboard" },
+  { to: "/budget", label: "Meses", icon: Calendar, permission: "view.budget" },
+  { to: "/historico", label: "Histórico", icon: History, permission: "view.historico" },
+  { to: "/relatorios", label: "Relatórios", icon: BarChart3, permission: "view.relatorios" },
+  { to: "/unidades", label: "Unidades", icon: Building2, permission: "view.unidades" },
+  { to: "/configuracoes", label: "Configurações", icon: Settings, permission: "view.configuracoes" },
 ];
 
 const COLLAPSE_KEY = "gs:sidebar-collapsed";
