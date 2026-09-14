@@ -406,7 +406,7 @@ function PermissoesTab() {
                         ))}
                       </tr>
                     ))}
-                  </>
+                  </Fragment>
                 ))}
               </tbody>
             </table>
