@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, Fragment } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { addMonths, brl, fmtPct, monthFirstDay, monthLabel, negCls, pct, saldoBadgeBg } from "@/lib/format";
+import { addMonths, brl, fmtDate, fmtPct, monthFirstDay, monthLabel, negCls, pct, saldoBadgeBg } from "@/lib/format";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -449,7 +449,7 @@ function BudgetMes() {
                 <tbody>
                   {lancamentos.map((l) => (
                     <tr key={l.id} className="border-t border-border/60">
-                      <td className="px-3 py-2 whitespace-nowrap">{new Date(l.data_gasto).toLocaleDateString("pt-BR")}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{fmtDate(l.data_gasto)}</td>
                       <td className="px-3 py-2 text-muted-foreground">{l.descricao || "—"}</td>
                       <td className={`px-3 py-2 text-right font-medium ${negCls(l.valor)}`}>{brl(l.valor)}</td>
                     </tr>
