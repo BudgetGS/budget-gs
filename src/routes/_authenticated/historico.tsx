@@ -130,7 +130,7 @@ function Historico() {
             <Button
               variant="ghost"
               className="rounded-lg"
-              onClick={() => { setUnidadeId("all"); setSupId(isSup && user?.id ? user.id : "all"); }}
+              onClick={() => { setUnidadeId("all"); setSupId(isSup && user?.id ? user.id : "all"); setMesRef("all"); }}
             >
               Limpar filtros
             </Button>
@@ -148,7 +148,8 @@ function Historico() {
           <table className="w-full text-sm">
             <thead className="bg-muted/60">
               <tr className="text-left">
-                <th className="px-4 py-3 font-semibold">Data</th>
+                <th className="px-4 py-3 font-semibold">Lançado em</th>
+                <th className="px-4 py-3 font-semibold">Mês referência</th>
                 <th className="px-4 py-3 font-semibold">Unidade</th>
                 <th className="px-4 py-3 font-semibold">Descrição</th>
                 <th className="px-4 py-3 font-semibold text-right">Valor</th>
@@ -157,12 +158,13 @@ function Historico() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={5} className="text-center py-10"><Loader2 className="h-5 w-5 animate-spin inline" /></td></tr>
+                <tr><td colSpan={6} className="text-center py-10"><Loader2 className="h-5 w-5 animate-spin inline" /></td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={5} className="text-center py-10 text-muted-foreground">Nenhum lançamento no período.</td></tr>
+                <tr><td colSpan={6} className="text-center py-10 text-muted-foreground">Nenhum lançamento no período.</td></tr>
               ) : rows.map((r) => (
                 <tr key={r.id} className="border-t border-border/60">
-                  <td className="px-4 py-3 whitespace-nowrap">{new Date(r.data_gasto).toLocaleDateString("pt-BR")}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">{r.created_at ? new Date(r.created_at).toLocaleDateString("pt-BR") : "—"}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">{monthLabel(r.data_gasto)}</td>
                   <td className="px-4 py-3 font-medium">{r.unidades?.nome ?? "—"}</td>
                   <td className="px-4 py-3 text-muted-foreground">{r.descricao ?? "—"}</td>
                   <td className="px-4 py-3 text-right font-semibold">{brl(r.valor)}</td>
