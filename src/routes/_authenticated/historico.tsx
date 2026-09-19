@@ -77,7 +77,7 @@ function Historico() {
       if (error) console.error(error);
       let list = ((data as any) ?? []) as Lanc[];
       if (supId !== "all") list = list.filter((l) => l.unidades?.supervisor_id === supId);
-      if (mesRef !== "all") list = list.filter((l) => l.data_gasto.slice(0, 7) === mesRef);
+      if (mesRef !== "all") list = list.filter((l) => refMes(l) === mesRef);
       setRows(list);
       setLoading(false);
     })();
