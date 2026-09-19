@@ -13,6 +13,13 @@ export const fmtPct = (v: number | null) => {
   return `${(v * 100).toFixed(1)}%`;
 };
 
+/** Formata uma data ISO (YYYY-MM-DD) sem sofrer deslocamento de fuso horário. */
+export const fmtDate = (isoDate: string | null | undefined) => {
+  if (!isoDate) return "—";
+  const [y, m, d] = isoDate.slice(0, 10).split("-");
+  return `${d}/${m}/${y}`;
+};
+
 export const monthLabel = (isoDate: string) => {
   const [y, m] = isoDate.split("-");
   const d = new Date(Number(y), Number(m) - 1, 1);
