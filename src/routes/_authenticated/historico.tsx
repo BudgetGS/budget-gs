@@ -68,7 +68,7 @@ function Historico() {
       setLoading(true);
       let q = supabase
         .from("lancamentos")
-        .select("id, valor, data_gasto, created_at, descricao, unidade_id, lancado_por, unidades(id, nome, supervisor_id), profiles:lancado_por(id, nome)")
+        .select("id, valor, data_gasto, created_at, descricao, unidade_id, lancado_por, unidades(id, nome, supervisor_id), profiles:lancado_por(id, nome), budgets_mensais(mes)")
         .gte("created_at", `${from}T00:00:00`)
         .lte("created_at", `${to}T23:59:59`)
         .order("created_at", { ascending: false });
