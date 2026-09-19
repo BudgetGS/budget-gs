@@ -58,8 +58,8 @@ function Historico() {
       let q = supabase
         .from("lancamentos")
         .select("id, valor, data_gasto, descricao, unidade_id, lancado_por, unidades(id, nome, supervisor_id), profiles:lancado_por(id, nome)")
-        .gte("data_gasto", from)
-        .lte("data_gasto", to)
+        .gte("created_at", `${from}T00:00:00`)
+        .lte("created_at", `${to}T23:59:59`)
         .order("data_gasto", { ascending: false })
         .order("created_at", { ascending: false });
       if (unidadeId !== "all") q = q.eq("unidade_id", unidadeId);
@@ -67,10 +67,11 @@ function Historico() {
       if (error) console.error(error);
       let list = ((data as any) ?? []) as Lanc[];
       if (supId !== "all") list = list.filter((l) => l.unidades?.supervisor_id === supId);
+      if (mesRef !== "all") list = list.filter((l) => l.data_gasto.slice(0, 7) === mesRef);
       setRows(list);
       setLoading(false);
     })();
-  }, [from, to, unidadeId, supId]);
+  }, [from, to, unidadeId, supId, mesRef]);
 
   const total = useMemo(() => rows.reduce((s, r) => s + Number(r.valor), 0), [rows]);
 
