@@ -170,7 +170,7 @@ function Historico() {
               ) : rows.map((r) => (
                 <tr key={r.id} className="border-t border-border/60">
                   <td className="px-4 py-3 whitespace-nowrap">{r.created_at ? new Date(r.created_at).toLocaleDateString("pt-BR") : "—"}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">{monthLabel(r.data_gasto)}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">{monthLabel(`${refMes(r)}-01`)}</td>
                   <td className="px-4 py-3 font-medium">{r.unidades?.nome ?? "—"}</td>
                   <td className="px-4 py-3 text-muted-foreground">{r.descricao ?? "—"}</td>
                   <td className="px-4 py-3 text-right font-semibold">{brl(r.valor)}</td>
