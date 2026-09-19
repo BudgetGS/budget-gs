@@ -24,7 +24,13 @@ type Lanc = {
   lancado_por: string | null;
   unidades: { id: string; nome: string; supervisor_id: string | null } | null;
   profiles: { id: string; nome: string } | null;
+  budgets_mensais: { mes: string } | null;
 };
+
+/** Mês ao qual o lançamento se refere: o mês do budget vinculado (fallback: data do gasto). */
+function refMes(l: { budgets_mensais?: { mes: string } | null; data_gasto: string }) {
+  return String(l.budgets_mensais?.mes ?? l.data_gasto).slice(0, 7);
+}
 
 function Historico() {
   const { role, user } = useAuth();
@@ -48,11 +54,11 @@ function Historico() {
       const [{ data: uds }, sList, { data: lancs }] = await Promise.all([
         supabase.from("unidades").select("id, nome, supervisor_id").order("nome"),
         fetchSupervisores(),
-        supabase.from("lancamentos").select("data_gasto").order("data_gasto", { ascending: false }).limit(1000),
+        supabase.from("lancamentos").select("data_gasto, budgets_mensais(mes)").order("data_gasto", { ascending: false }).limit(1000),
       ]);
       setUnidades((uds as any) ?? []);
       setSups(sList);
-      const keys: string[] = Array.from(new Set<string>(((lancs as any) ?? []).map((l: any) => String(l.data_gasto).slice(0, 7) as string))).sort().reverse();
+      const keys: string[] = Array.from(new Set<string>(((lancs as any) ?? []).map((l: any) => refMes(l)))).sort().reverse();
       setMeses(keys);
     })();
   }, []);
@@ -62,7 +68,7 @@ function Historico() {
       setLoading(true);
       let q = supabase
         .from("lancamentos")
-        .select("id, valor, data_gasto, created_at, descricao, unidade_id, lancado_por, unidades(id, nome, supervisor_id), profiles:lancado_por(id, nome)")
+        .select("id, valor, data_gasto, created_at, descricao, unidade_id, lancado_por, unidades(id, nome, supervisor_id), profiles:lancado_por(id, nome), budgets_mensais(mes)")
         .gte("created_at", `${from}T00:00:00`)
         .lte("created_at", `${to}T23:59:59`)
         .order("created_at", { ascending: false });
@@ -71,7 +77,7 @@ function Historico() {
       if (error) console.error(error);
       let list = ((data as any) ?? []) as Lanc[];
       if (supId !== "all") list = list.filter((l) => l.unidades?.supervisor_id === supId);
-      if (mesRef !== "all") list = list.filter((l) => l.data_gasto.slice(0, 7) === mesRef);
+      if (mesRef !== "all") list = list.filter((l) => refMes(l) === mesRef);
       setRows(list);
       setLoading(false);
     })();
@@ -164,7 +170,7 @@ function Historico() {
               ) : rows.map((r) => (
                 <tr key={r.id} className="border-t border-border/60">
                   <td className="px-4 py-3 whitespace-nowrap">{r.created_at ? new Date(r.created_at).toLocaleDateString("pt-BR") : "—"}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">{monthLabel(r.data_gasto)}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">{monthLabel(`${refMes(r)}-01`)}</td>
                   <td className="px-4 py-3 font-medium">{r.unidades?.nome ?? "—"}</td>
                   <td className="px-4 py-3 text-muted-foreground">{r.descricao ?? "—"}</td>
                   <td className="px-4 py-3 text-right font-semibold">{brl(r.valor)}</td>
