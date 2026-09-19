@@ -54,11 +54,11 @@ function Historico() {
       const [{ data: uds }, sList, { data: lancs }] = await Promise.all([
         supabase.from("unidades").select("id, nome, supervisor_id").order("nome"),
         fetchSupervisores(),
-        supabase.from("lancamentos").select("data_gasto").order("data_gasto", { ascending: false }).limit(1000),
+        supabase.from("lancamentos").select("data_gasto, budgets_mensais(mes)").order("data_gasto", { ascending: false }).limit(1000),
       ]);
       setUnidades((uds as any) ?? []);
       setSups(sList);
-      const keys: string[] = Array.from(new Set<string>(((lancs as any) ?? []).map((l: any) => String(l.data_gasto).slice(0, 7) as string))).sort().reverse();
+      const keys: string[] = Array.from(new Set<string>(((lancs as any) ?? []).map((l: any) => refMes(l)))).sort().reverse();
       setMeses(keys);
     })();
   }, []);
