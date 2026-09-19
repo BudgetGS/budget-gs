@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { brl } from "@/lib/format";
+import { brl, monthLabel, monthKey } from "@/lib/format";
 import { fetchSupervisores, type Supervisor } from "@/lib/supervisores";
 import { Loader2 } from "lucide-react";
 
@@ -34,6 +34,7 @@ function Historico() {
   const [from, setFrom] = useState<string>(firstOfMonth.toISOString().slice(0, 10));
   const [to, setTo] = useState<string>(today.toISOString().slice(0, 10));
   const [unidadeId, setUnidadeId] = useState<string>("all");
+  const [mesRef, setMesRef] = useState<string>("all");
   const [supId, setSupId] = useState<string>(isSup && user?.id ? user.id : "all");
   const [rows, setRows] = useState<Lanc[]>([]);
   const [unidades, setUnidades] = useState<{ id: string; nome: string; supervisor_id: string | null }[]>([]);
