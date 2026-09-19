@@ -51,7 +51,7 @@ function Historico() {
       ]);
       setUnidades((uds as any) ?? []);
       setSups(sList);
-      const keys = Array.from(new Set(((lancs as any) ?? []).map((l: any) => String(l.data_gasto).slice(0, 7)))).sort().reverse();
+      const keys: string[] = Array.from(new Set<string>(((lancs as any) ?? []).map((l: any) => String(l.data_gasto).slice(0, 7) as string))).sort().reverse();
       setMeses(keys);
     })();
   }, []);
