@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { brl, monthLabel, monthKey } from "@/lib/format";
+import { brl, monthLabel } from "@/lib/format";
 import { fetchSupervisores, type Supervisor } from "@/lib/supervisores";
 import { Loader2 } from "lucide-react";
 
@@ -65,7 +65,6 @@ function Historico() {
         .select("id, valor, data_gasto, created_at, descricao, unidade_id, lancado_por, unidades(id, nome, supervisor_id), profiles:lancado_por(id, nome)")
         .gte("created_at", `${from}T00:00:00`)
         .lte("created_at", `${to}T23:59:59`)
-        .order("data_gasto", { ascending: false })
         .order("created_at", { ascending: false });
       if (unidadeId !== "all") q = q.eq("unidade_id", unidadeId);
       const { data, error } = await q;
