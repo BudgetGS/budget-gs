@@ -39,16 +39,20 @@ function Historico() {
   const [rows, setRows] = useState<Lanc[]>([]);
   const [unidades, setUnidades] = useState<{ id: string; nome: string; supervisor_id: string | null }[]>([]);
   const [sups, setSups] = useState<Supervisor[]>([]);
+  const [meses, setMeses] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const [{ data: uds }, sList] = await Promise.all([
+      const [{ data: uds }, sList, { data: lancs }] = await Promise.all([
         supabase.from("unidades").select("id, nome, supervisor_id").order("nome"),
         fetchSupervisores(),
+        supabase.from("lancamentos").select("data_gasto").order("data_gasto", { ascending: false }).limit(1000),
       ]);
       setUnidades((uds as any) ?? []);
       setSups(sList);
+      const keys = Array.from(new Set(((lancs as any) ?? []).map((l: any) => String(l.data_gasto).slice(0, 7)))).sort().reverse();
+      setMeses(keys);
     })();
   }, []);
 
@@ -83,9 +87,19 @@ function Historico() {
       </div>
 
       <Card className="rounded-2xl p-4">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-muted-foreground">De</label>
+            <label className="text-xs font-semibold text-muted-foreground">Mês referência</label>
+            <Select value={mesRef} onValueChange={setMesRef}>
+              <SelectTrigger className="rounded-lg"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {meses.map((m) => (<SelectItem key={m} value={m}>{monthLabel(`${m}-01`)}</SelectItem>))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-muted-foreground">Lançado de</label>
             <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded-lg" />
           </div>
           <div className="space-y-1">
