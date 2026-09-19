@@ -24,7 +24,13 @@ type Lanc = {
   lancado_por: string | null;
   unidades: { id: string; nome: string; supervisor_id: string | null } | null;
   profiles: { id: string; nome: string } | null;
+  budgets_mensais: { mes: string } | null;
 };
+
+/** Mês ao qual o lançamento se refere: o mês do budget vinculado (fallback: data do gasto). */
+function refMes(l: { budgets_mensais?: { mes: string } | null; data_gasto: string }) {
+  return String(l.budgets_mensais?.mes ?? l.data_gasto).slice(0, 7);
+}
 
 function Historico() {
   const { role, user } = useAuth();
