@@ -18,6 +18,7 @@ type Lanc = {
   id: string;
   valor: number;
   data_gasto: string;
+  created_at: string | null;
   descricao: string | null;
   unidade_id: string;
   lancado_por: string | null;
@@ -61,7 +62,7 @@ function Historico() {
       setLoading(true);
       let q = supabase
         .from("lancamentos")
-        .select("id, valor, data_gasto, descricao, unidade_id, lancado_por, unidades(id, nome, supervisor_id), profiles:lancado_por(id, nome)")
+        .select("id, valor, data_gasto, created_at, descricao, unidade_id, lancado_por, unidades(id, nome, supervisor_id), profiles:lancado_por(id, nome)")
         .gte("created_at", `${from}T00:00:00`)
         .lte("created_at", `${to}T23:59:59`)
         .order("data_gasto", { ascending: false })
