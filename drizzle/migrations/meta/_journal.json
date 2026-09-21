@@ -15,6 +15,13 @@
       "when": 1789339766539,
       "tag": "0001_create_role_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790033372641,
+      "tag": "0002_supervisor_update_own_lancamentos",
+      "breakpoints": true
     }
   ]
 }
