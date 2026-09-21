@@ -120,6 +120,7 @@ function Dashboard() {
       nome: r.unidades.nome,
       gasto: Number(r.gasto),
       budget: r.budgetEff,
+      saldo: r.budgetEff - Number(r.gasto),
       pctVal: r.budgetEff > 0 ? Number(r.gasto) / r.budgetEff : 0,
     }))
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));

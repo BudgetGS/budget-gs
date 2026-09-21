@@ -113,7 +113,12 @@ function Relatorios() {
         cur.gasto += Number(r.gasto);
       }
     });
-    return Array.from(map.values()).map((x) => ({ ...x, label: monthLabel(x.mes).slice(0, 3) }));
+    // "Gasto acumulado": soma progressiva mês a mês, comparável ao budget acumulado.
+    let accGasto = 0;
+    return Array.from(map.values()).map((x) => {
+      accGasto += x.gasto;
+      return { ...x, gastoAcum: accGasto, label: monthLabel(x.mes).slice(0, 3) };
+    });
   }, [filtered, year]);
 
   const byUnidade = useMemo(() => {
