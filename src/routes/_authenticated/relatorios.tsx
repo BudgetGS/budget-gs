@@ -415,7 +415,7 @@ function Relatorios() {
                       <Tooltip formatter={(v: number) => brl(v)} contentStyle={{ borderRadius: 12 }} />
                       <Legend />
                       <Line type="monotone" dataKey="budgetAcum" name="Budget acumulado" stroke="var(--color-secondary)" strokeWidth={2} />
-                      <Line type="monotone" dataKey="gasto" name="Gasto" stroke="var(--color-primary)" strokeWidth={2} />
+                      <Line type="monotone" dataKey="gastoAcum" name="Gasto acumulado" stroke="var(--color-primary)" strokeWidth={2} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
