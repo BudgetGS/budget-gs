@@ -334,13 +334,12 @@ function BudgetMes() {
         </Card>
       )}
 
-      <Card className="rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
+      <Card className="rounded-2xl">
           <table className="w-full text-sm">
-            <thead className="bg-muted/60">
-              <tr className="text-left">
-                <th className="px-4 py-3 font-semibold">Unidade</th>
-                <th className="px-4 py-3 font-semibold text-right">
+            <thead>
+              <tr className="text-left bg-muted">
+                <th className="px-4 py-3 font-semibold sticky top-0 z-10 bg-muted">Unidade</th>
+                <th className="px-4 py-3 font-semibold text-right sticky top-0 z-10 bg-muted">
                   <div className="inline-flex items-center gap-2">
                     Budget fixo
                     {canEditBudget && (
@@ -356,10 +355,10 @@ function BudgetMes() {
                     )}
                   </div>
                 </th>
-                <th className="px-4 py-3 font-semibold text-right">Budget mês</th>
-                <th className="px-4 py-3 font-semibold text-right">Gasto</th>
-                <th className="px-4 py-3 font-semibold text-right">Saldo</th>
-                <th className="px-4 py-3 font-semibold text-right">%</th>
+                <th className="px-4 py-3 font-semibold text-right sticky top-0 z-10 bg-muted">Budget mês</th>
+                <th className="px-4 py-3 font-semibold text-right sticky top-0 z-10 bg-muted">Gasto</th>
+                <th className="px-4 py-3 font-semibold text-right sticky top-0 z-10 bg-muted">Saldo</th>
+                <th className="px-4 py-3 font-semibold text-right sticky top-0 z-10 bg-muted">%</th>
               </tr>
             </thead>
             <tbody>
