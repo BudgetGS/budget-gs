@@ -120,6 +120,7 @@ function Dashboard() {
       nome: r.unidades.nome,
       gasto: Number(r.gasto),
       budget: r.budgetEff,
+      saldo: r.budgetEff - Number(r.gasto),
       pctVal: r.budgetEff > 0 ? Number(r.gasto) / r.budgetEff : 0,
     }))
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
@@ -255,7 +256,21 @@ function Dashboard() {
                     <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 60 }}>
                       <XAxis dataKey="nome" angle={-30} textAnchor="end" fontSize={11} interval={0} />
                       <YAxis fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                      <Tooltip formatter={(v: number) => brl(v)} contentStyle={{ borderRadius: 12, border: "1px solid var(--color-border)" }} />
+                      <Tooltip
+                        contentStyle={{ borderRadius: 12, border: "1px solid var(--color-border)" }}
+                        content={({ active, payload, label }: any) => {
+                          if (!active || !payload?.length) return null;
+                          const d = payload[0].payload as { budget: number; gasto: number; saldo: number };
+                          return (
+                            <div className="rounded-xl border bg-background px-3 py-2 text-xs shadow-md space-y-1">
+                              <p className="font-semibold text-sm">{label}</p>
+                              <p>Budget: <span className="font-medium">{brl(d.budget)}</span></p>
+                              <p>Gasto: <span className="font-medium">{brl(d.gasto)}</span></p>
+                              <p>Saldo: <span className={`font-medium ${d.saldo < 0 ? "text-destructive" : ""}`}>{brl(d.saldo)}</span></p>
+                            </div>
+                          );
+                        }}
+                      />
                       <Bar dataKey="budget" radius={[6, 6, 0, 0]}>
                         {chartData.map((d, i) => (
                           <Cell key={i} fill={d.budget < 0 ? "var(--color-destructive)" : "var(--color-secondary)"} />

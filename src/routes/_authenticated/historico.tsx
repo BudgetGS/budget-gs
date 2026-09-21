@@ -6,9 +6,15 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { brl, monthLabel } from "@/lib/format";
 import { fetchSupervisores, type Supervisor } from "@/lib/supervisores";
-import { Loader2 } from "lucide-react";
+import { Loader2, Pencil, X } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/historico")({
   component: Historico,
@@ -48,6 +54,54 @@ function Historico() {
   const [sups, setSups] = useState<Supervisor[]>([]);
   const [meses, setMeses] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reload, setReload] = useState(0);
+  const [editing, setEditing] = useState<Lanc | null>(null);
+  const [editValor, setEditValor] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState<Lanc | null>(null);
+
+  const canManage = (l: Lanc) => (isSup ? l.lancado_por === user?.id : role === "admin" || role === "gerente");
+
+  const openEdit = (l: Lanc) => {
+    setEditing(l);
+    setEditValor(String(l.valor));
+    setEditDesc(l.descricao ?? "");
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    const valor = Number(editValor.replace(",", "."));
+    if (!Number.isFinite(valor) || valor === 0) {
+      toast.error("Informe um valor válido.");
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase
+      .from("lancamentos")
+      .update({ valor, descricao: editDesc.trim() || null })
+      .eq("id", editing.id);
+    setSaving(false);
+    if (error) {
+      toast.error("Não foi possível salvar o lançamento.");
+      return;
+    }
+    toast.success("Lançamento atualizado.");
+    setEditing(null);
+    setReload((n) => n + 1);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    const { error } = await supabase.from("lancamentos").delete().eq("id", deleting.id);
+    if (error) {
+      toast.error("Não foi possível excluir o lançamento.");
+      return;
+    }
+    toast.success("Lançamento excluído.");
+    setDeleting(null);
+    setReload((n) => n + 1);
+  };
 
   useEffect(() => {
     (async () => {
@@ -81,7 +135,7 @@ function Historico() {
       setRows(list);
       setLoading(false);
     })();
-  }, [from, to, unidadeId, supId, mesRef]);
+  }, [from, to, unidadeId, supId, mesRef, reload]);
 
   const total = useMemo(() => rows.reduce((s, r) => s + Number(r.valor), 0), [rows]);
 
@@ -160,27 +214,86 @@ function Historico() {
                 <th className="px-4 py-3 font-semibold">Descrição</th>
                 <th className="px-4 py-3 font-semibold text-right">Valor</th>
                 <th className="px-4 py-3 font-semibold">Lançado por</th>
+                <th className="px-4 py-3 font-semibold text-right">Ações</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className="text-center py-10"><Loader2 className="h-5 w-5 animate-spin inline" /></td></tr>
+                <tr><td colSpan={7} className="text-center py-10"><Loader2 className="h-5 w-5 animate-spin inline" /></td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-10 text-muted-foreground">Nenhum lançamento no período.</td></tr>
+                <tr><td colSpan={7} className="text-center py-10 text-muted-foreground">Nenhum lançamento no período.</td></tr>
               ) : rows.map((r) => (
                 <tr key={r.id} className="border-t border-border/60">
                   <td className="px-4 py-3 whitespace-nowrap">{r.created_at ? new Date(r.created_at).toLocaleDateString("pt-BR") : "—"}</td>
                   <td className="px-4 py-3 whitespace-nowrap">{monthLabel(`${refMes(r)}-01`)}</td>
                   <td className="px-4 py-3 font-medium">{r.unidades?.nome ?? "—"}</td>
                   <td className="px-4 py-3 text-muted-foreground">{r.descricao ?? "—"}</td>
-                  <td className="px-4 py-3 text-right font-semibold">{brl(r.valor)}</td>
+                  <td className={`px-4 py-3 text-right font-semibold ${Number(r.valor) < 0 ? "text-destructive" : ""}`}>{brl(r.valor)}</td>
                   <td className="px-4 py-3">{r.profiles?.nome ?? "—"}</td>
+                  <td className="px-4 py-3">
+                    {canManage(r) ? (
+                      <div className="flex items-center justify-end gap-1">
+                        <Popover open={editing?.id === r.id} onOpenChange={(o) => (o ? openEdit(r) : setEditing(null))}>
+                          <PopoverTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" aria-label="Editar lançamento">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent align="end" className="w-64 space-y-3">
+                            <div className="space-y-1">
+                              <label className="text-xs font-semibold text-muted-foreground">Valor</label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={editValor}
+                                onChange={(e) => setEditValor(e.target.value)}
+                                className="rounded-lg"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-xs font-semibold text-muted-foreground">Descrição</label>
+                              <Input value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="rounded-lg" />
+                            </div>
+                            <Button onClick={saveEdit} disabled={saving} className="w-full rounded-lg">
+                              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
+                            </Button>
+                          </PopoverContent>
+                        </Popover>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg text-destructive hover:text-destructive"
+                          aria-label="Excluir lançamento"
+                          onClick={() => setDeleting(r)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : null}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </Card>
+
+      <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir lançamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Excluir este lançamento de {deleting ? brl(deleting.valor) : ""}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

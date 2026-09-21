@@ -113,7 +113,12 @@ function Relatorios() {
         cur.gasto += Number(r.gasto);
       }
     });
-    return Array.from(map.values()).map((x) => ({ ...x, label: monthLabel(x.mes).slice(0, 3) }));
+    // "Gasto acumulado": soma progressiva mês a mês, comparável ao budget acumulado.
+    let accGasto = 0;
+    return Array.from(map.values()).map((x) => {
+      accGasto += x.gasto;
+      return { ...x, gastoAcum: accGasto, label: monthLabel(x.mes).slice(0, 3) };
+    });
   }, [filtered, year]);
 
   const byUnidade = useMemo(() => {
@@ -410,7 +415,7 @@ function Relatorios() {
                       <Tooltip formatter={(v: number) => brl(v)} contentStyle={{ borderRadius: 12 }} />
                       <Legend />
                       <Line type="monotone" dataKey="budgetAcum" name="Budget acumulado" stroke="var(--color-secondary)" strokeWidth={2} />
-                      <Line type="monotone" dataKey="gasto" name="Gasto" stroke="var(--color-primary)" strokeWidth={2} />
+                      <Line type="monotone" dataKey="gastoAcum" name="Gasto acumulado" stroke="var(--color-primary)" strokeWidth={2} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
