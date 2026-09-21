@@ -417,7 +417,6 @@ function BudgetMes() {
               })}
             </tbody>
           </table>
-        </div>
       </Card>
 
       <Dialog open={!!dialogUnidade} onOpenChange={(open) => { if (!open) setDialogUnidade(null); }}>
