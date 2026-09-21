@@ -135,7 +135,7 @@ function Historico() {
       setRows(list);
       setLoading(false);
     })();
-  }, [from, to, unidadeId, supId, mesRef]);
+  }, [from, to, unidadeId, supId, mesRef, reload]);
 
   const total = useMemo(() => rows.reduce((s, r) => s + Number(r.valor), 0), [rows]);
 
