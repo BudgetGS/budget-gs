@@ -54,6 +54,54 @@ function Historico() {
   const [sups, setSups] = useState<Supervisor[]>([]);
   const [meses, setMeses] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reload, setReload] = useState(0);
+  const [editing, setEditing] = useState<Lanc | null>(null);
+  const [editValor, setEditValor] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState<Lanc | null>(null);
+
+  const canManage = (l: Lanc) => (isSup ? l.lancado_por === user?.id : role === "admin" || role === "gerente");
+
+  const openEdit = (l: Lanc) => {
+    setEditing(l);
+    setEditValor(String(l.valor));
+    setEditDesc(l.descricao ?? "");
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    const valor = Number(editValor.replace(",", "."));
+    if (!Number.isFinite(valor) || valor === 0) {
+      toast.error("Informe um valor válido.");
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase
+      .from("lancamentos")
+      .update({ valor, descricao: editDesc.trim() || null })
+      .eq("id", editing.id);
+    setSaving(false);
+    if (error) {
+      toast.error("Não foi possível salvar o lançamento.");
+      return;
+    }
+    toast.success("Lançamento atualizado.");
+    setEditing(null);
+    setReload((n) => n + 1);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    const { error } = await supabase.from("lancamentos").delete().eq("id", deleting.id);
+    if (error) {
+      toast.error("Não foi possível excluir o lançamento.");
+      return;
+    }
+    toast.success("Lançamento excluído.");
+    setDeleting(null);
+    setReload((n) => n + 1);
+  };
 
   useEffect(() => {
     (async () => {
